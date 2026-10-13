@@ -1,0 +1,1346 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DotaMod Hub — База кастомных скинов и VPK модов Dota 2</title>
+  <meta name="description" content="Каталог кастомных скинов, эффектов и модификаций для Dota 2 с разделением по героям.">
+
+  <!-- Tailwind CSS (Local offline bundle) -->
+  <script src="tailwind.cdn.js"></script>
+
+  <!-- Font Awesome Icons (Local offline bundle) -->
+  <link rel="stylesheet" href="assets/fontawesome/css/all.min.css">
+
+  <!-- Custom Styles -->
+  <link rel="stylesheet" href="style.css">
+
+  <!-- Full Mods Database (for local file:// compatibility) -->
+  <script src="data/mods-data.js"></script>
+</head>
+<body class="min-h-screen flex flex-col justify-between selection:bg-indigo-600 selection:text-white relative">
+
+  <!-- Custom Background Container (Controlled via background customizer) -->
+  <div id="customBgContainer" class="fixed inset-0 pointer-events-none z-[-1] overflow-hidden transition-all duration-500">
+    <div id="customBgImage" class="absolute inset-0 bg-cover bg-center transition-all duration-700 ease-out" style="transform: scale(1.04);"></div>
+    <video id="customBgVideo" class="absolute inset-0 w-full h-full object-cover transition-all duration-700 ease-out hidden" style="transform: scale(1.04);" autoplay loop muted playsinline></video>
+    <div id="customBgOverlay" class="absolute inset-0 bg-[#0c0e14]/75 transition-opacity duration-300"></div>
+  </div>
+
+  <!-- Navbar -->
+  <header class="sticky top-0 z-40 w-full bg-[#10131c]/95 backdrop-blur-md border-b border-white/5 py-3 px-4 sm:px-8">
+    <div class="max-w-[1400px] mx-auto flex items-center justify-between gap-4">
+
+      <!-- Logo -->
+      <a id="headerLogoBtn" href="javascript:void(0)" onclick="window.resetToAllMods(event)" class="flex items-center space-x-2.5 shrink-0 group select-none cursor-pointer active:scale-95 transition-transform" title="Вернуться ко всем модам">
+        <div class="w-9 h-9 shrink-0 flex items-center justify-center group-hover:scale-105 transition-transform duration-200">
+          <img id="headerLogoIcon" src="assets/ModHub_Avatar_Transparent.png" alt="ModHub" class="brand-logo-icon w-full h-full object-contain filter drop-shadow(0 2px 8px rgba(88,101,242,0.35)) transition-all duration-300">
+        </div>
+        <div class="flex items-baseline space-x-1.5">
+          <span class="brand-font text-xl font-bold tracking-wider text-white">DOTA<span class="text-indigo-400">MOD</span></span>
+          <span class="text-[11px] text-slate-500 font-mono">hub</span>
+        </div>
+      </a>
+
+      <!-- Main Navigation Tabs (Каталог / Мои моды) -->
+      <div class="flex items-center bg-[#161a26] p-1 rounded-xl border border-white/10 gap-1 select-none">
+        <button id="navTabCatalog" onclick="switchMainPage('catalog')" class="h-8 px-4 rounded-lg text-xs font-bold transition-all flex items-center gap-2 bg-indigo-600 text-white shadow-sm shadow-indigo-600/30">
+          <i class="fa-solid fa-border-all text-[11px]"></i>
+          <span data-i18n="navCatalog">Каталог</span>
+        </button>
+        <button id="navTabMyMods" onclick="switchMainPage('mymods')" class="h-8 px-4 rounded-lg text-xs font-semibold transition-all flex items-center gap-2 text-slate-400 hover:text-white hover:bg-white/[0.04]">
+          <i class="fa-solid fa-folder-open text-[11px]"></i>
+          <span data-i18n="navMyMods">Мои моды</span>
+          <span id="installedModsCountBadge" class="hidden px-2 py-0.5 rounded-full bg-indigo-500/20 border border-indigo-500/40 text-indigo-300 text-[10px] font-bold font-mono">0</span>
+        </button>
+      </div>
+
+      <!-- Search Input (Desktop) -->
+      <div id="headerSearchWrapper" class="flex-1 max-w-md hidden md:block transition-opacity duration-200">
+        <div class="relative flex items-center">
+          <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
+          <input 
+            type="text" 
+            id="searchInput" 
+            placeholder="Поиск по скину, герою, предмету..." 
+            class="w-full bg-[#161a26] text-slate-200 placeholder-slate-500 pl-10 pr-9 py-2.5 rounded-2xl border border-white/5 hover:border-white/10 text-xs focus:outline-none focus:border-indigo-500/60 focus:ring-2 focus:ring-indigo-500/20 transition-all shadow-inner"
+          >
+          <button id="clearSearchBtn" onclick="clearMainSearch()" class="hidden absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-slate-700/60 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center text-[10px] transition-colors" title="Очистить поиск">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Actions Toolbar (Spacious & Free arrangement) -->
+      <div class="flex items-center gap-2.5 sm:gap-3.5">
+        <button onclick="launchDotaFromDesktop()" class="btn-shimmer px-4 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center space-x-2 transition-all shadow-md shadow-emerald-600/25 active:scale-95" title="Запустить Dota 2 через Steam">
+          <i class="fa-solid fa-play text-[11px]"></i>
+          <span class="hidden sm:inline" data-i18n="playBtn">Играть</span>
+        </button>
+
+        <div class="h-6 w-px bg-white/10 hidden sm:block"></div>
+
+        <button onclick="openBgModal()" class="px-3.5 py-2.5 rounded-2xl bg-[#161a26] hover:bg-[#1f2436] text-slate-300 hover:text-white text-xs font-medium border border-white/5 flex items-center space-x-1.5 transition-all hover:border-white/15" title="Настроить фон приложения">
+          <i class="fa-solid fa-image text-indigo-400 text-xs"></i>
+          <span class="hidden xl:inline" data-i18n="bgBtn">Фон</span>
+        </button>
+
+        <button onclick="openFavModal()" class="px-3.5 py-2.5 rounded-2xl bg-[#161a26] hover:bg-[#1f2436] text-slate-300 hover:text-white text-xs font-medium border border-white/5 flex items-center space-x-1.5 transition-all hover:border-white/15" title="Избранные модификации">
+          <i class="fa-solid fa-heart text-red-400 text-xs"></i>
+          <span class="inline font-medium" data-i18n="favBtn">Избранное</span>
+          <span id="favCountBadge" class="hidden px-1.5 py-0.2 rounded-full bg-red-500 text-white text-[10px] font-bold">0</span>
+        </button>
+
+        <button id="headerSettingsBtn" onclick="openSettingsModal()" class="px-3.5 py-2.5 rounded-2xl bg-[#161a26] hover:bg-[#1f2436] text-slate-300 hover:text-white text-xs font-medium border border-white/5 flex items-center space-x-1.5 transition-all hover:border-white/15" title="Настройки">
+          <i class="fa-solid fa-gear text-slate-400 hover:text-white text-xs transition-colors"></i>
+          <span class="inline font-medium" data-i18n="settingsBtn">Настройки</span>
+        </button>
+
+        <div class="h-6 w-px bg-white/10 hidden sm:block"></div>
+
+        <!-- Steam Account Widget -->
+        <div id="headerAccountWidget" class="flex items-center">
+          <button onclick="openAccountModal()" class="px-3 py-2 rounded-2xl bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 hover:text-white border border-indigo-500/30 text-xs font-semibold flex items-center space-x-1.5 transition-all" title="Привязать Steam">
+            <i class="fa-brands fa-steam text-xs"></i>
+            <span class="hidden sm:inline">Steam</span>
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Mobile Search Input -->
+    <div class="mt-3 md:hidden">
+      <div class="relative flex items-center">
+        <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
+        <input 
+          type="text" 
+          id="mobileSearchInput"
+          placeholder="Поиск по скину, герою, предмету..." 
+          oninput="handleSearchInput(this.value)"
+          class="w-full bg-[#161a26] text-slate-200 placeholder-slate-500 pl-10 pr-9 py-2.5 rounded-2xl border border-white/5 text-xs focus:outline-none focus:border-indigo-500/50"
+        >
+        <button id="clearMobileSearchBtn" onclick="clearMainSearch()" class="hidden absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-slate-700/60 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center text-[10px]" title="Очистить поиск">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Layout: Content + Sidebar -->
+  <div class="max-w-[1400px] mx-auto px-4 sm:px-6 pt-6 pb-2 w-full flex-1">
+
+    <!-- PAGE: Catalog View -->
+    <div id="catalogPageView">
+
+      <!-- Update Notification Banner (Optimized release notification) -->
+      <div id="updateNotificationBanner" class="mb-5 rounded-3xl p-4 sm:p-5 bg-gradient-to-r from-indigo-950/80 via-[#151928] to-[#1e1738] border border-indigo-500/35 shadow-xl shadow-indigo-950/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative overflow-hidden transition-all duration-300">
+        <div class="absolute -right-12 -bottom-12 w-44 h-44 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none"></div>
+        <div class="flex items-start sm:items-center space-x-3.5 relative z-10">
+          <div class="w-11 h-11 rounded-2xl bg-indigo-600/20 border border-indigo-500/40 flex items-center justify-center text-indigo-400 shrink-0 shadow-inner">
+            <i class="fa-solid fa-arrows-rotate text-lg fa-spin-pulse" style="--fa-animation-duration: 4s;"></i>
+          </div>
+          <div>
+            <div class="flex items-center space-x-2 flex-wrap gap-y-1">
+              <h3 class="text-sm sm:text-base font-bold text-white tracking-wide">Доступно обновление DotaMod Hub v1.7.0</h3>
+              <span class="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-bold border border-emerald-500/30">ВАЖНОЕ ОБНОВЛЕНИЕ</span>
+            </div>
+            <p class="text-xs text-slate-400 mt-1">Исправление работы фонов главного меню (Sematary, Dark Tree, Bliss и др.), поддержка WebM-видео и защита VAC!</p>
+          </div>
+        </div>
+        <div class="flex items-center space-x-2 shrink-0 relative z-10 self-end sm:self-auto">
+          <button onclick="dismissUpdateNotification()" class="px-4 py-2 rounded-xl bg-[#12151e] hover:bg-[#1a1f2e] text-slate-300 hover:text-white text-xs font-semibold border border-white/10 transition-all flex items-center gap-1.5" title="Напомнить позже">
+            <i class="fa-regular fa-clock text-[11px] text-slate-400"></i>
+            <span>Позже</span>
+          </button>
+          <button onclick="openUpdateModal()" class="btn-shimmer px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white text-xs font-bold shadow-lg shadow-indigo-600/30 transition-all flex items-center space-x-2">
+            <i class="fa-solid fa-download text-[11px]"></i>
+            <span>Обновить сейчас</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Title -->
+    <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-2 mb-5">
+      <div>
+        <h1 class="text-xl sm:text-2xl font-bold text-white tracking-tight" data-i18n="catalogTitle">Каталог модификаций Dota 2</h1>
+        <p class="text-slate-400 text-xs mt-0.5" data-i18n="catalogSubtitle">Бесплатная база клиентских скинов, эффектов частиц и ландшафта</p>
+      </div>
+      <div id="totalModsCount" class="text-xs font-mono text-slate-400 bg-[#161a26] px-3 py-1.5 rounded-2xl border border-white/5 self-start sm:self-auto"></div>
+    </div>
+
+    <!-- SECTION: Recently Added (Featured Showcase) -->
+    <section id="recentlyAddedSection" class="mb-7 rounded-3xl p-4 sm:p-5 relative overflow-hidden bg-gradient-to-r from-indigo-950/40 via-[#131724] to-[#12151e] border border-indigo-500/25 shadow-xl shadow-indigo-950/20">
+      
+      <!-- Subtle ambient glow effects -->
+      <div class="absolute -top-12 -left-12 w-48 h-48 bg-indigo-600/10 rounded-full blur-3xl pointer-events-none"></div>
+      <div class="absolute -bottom-12 right-12 w-48 h-48 bg-emerald-600/10 rounded-full blur-3xl pointer-events-none"></div>
+
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 relative z-10">
+        <div class="flex items-center space-x-3">
+          <span class="flex h-3.5 w-3.5 relative">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500 shadow-md shadow-emerald-500/50"></span>
+          </span>
+          <div>
+            <div class="flex items-center space-x-2">
+              <h2 class="text-sm sm:text-base font-bold text-white tracking-wide" data-i18n="recentlyAddedTitle">Недавно добавленные</h2>
+              <span class="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold uppercase tracking-wider">NEW</span>
+            </div>
+            <p class="text-[11px] text-slate-400 mt-0.5" data-i18n="recentlyAddedSubtitle">Свежие кастомные скины и обновления каталога</p>
+          </div>
+        </div>
+
+        <div class="flex items-center space-x-2 self-end sm:self-auto">
+          <button id="recentPrevBtn" class="w-8 h-8 rounded-xl bg-[#161a26]/90 hover:bg-indigo-600 text-slate-300 hover:text-white flex items-center justify-center text-xs transition-all border border-white/10 shadow-sm" title="Назад">
+            <i class="fa-solid fa-chevron-left"></i>
+          </button>
+          <button id="recentNextBtn" class="w-8 h-8 rounded-xl bg-[#161a26]/90 hover:bg-indigo-600 text-slate-300 hover:text-white flex items-center justify-center text-xs transition-all border border-white/10 shadow-sm" title="Вперед">
+            <i class="fa-solid fa-chevron-right"></i>
+          </button>
+        </div>
+      </div>
+
+      <div id="recentContainer" class="flex items-stretch gap-3.5 overflow-x-auto pb-2 no-scrollbar scroll-smooth relative z-10">
+        <!-- Rendered via JS -->
+      </div>
+    </section>
+
+    <!-- Two-Column Layout: Left Sidebar + Right Content Area -->
+    <div class="flex flex-col lg:flex-row gap-6 items-start">
+
+      <!-- LEFT: Filter Sidebar (Desktop) -->
+      <aside id="filterSidebar" class="sidebar-desktop w-[275px] shrink-0">
+        <div class="sidebar-panel sticky top-[72px] rounded-3xl bg-[#12151e] border border-white/5 p-4 space-y-4 max-h-[calc(100vh-88px)] overflow-y-auto no-scrollbar">
+
+          <!-- View Mode Switcher in Sidebar Filter -->
+          <div>
+            <div class="text-[10px] font-semibold uppercase tracking-widest text-slate-500 mb-2 px-1 flex items-center justify-between">
+              <span data-i18n="sidebarViewTitle">Вид каталога</span>
+            </div>
+            <div class="grid grid-cols-2 gap-1.5 p-1 rounded-2xl bg-[#161a26] border border-white/5">
+              <button 
+                id="sidebarViewGridBtn" 
+                onclick="setViewMode('grid')" 
+                class="px-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-center space-x-1.5 transition-all bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
+                title="Отображение сеткой"
+              >
+                <i class="fa-solid fa-table-cells text-[11px]"></i>
+                <span data-i18n="viewGrid">Сетка</span>
+              </button>
+              <button 
+                id="sidebarViewListBtn" 
+                onclick="setViewMode('list')" 
+                class="px-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-center space-x-1.5 transition-all text-slate-400 hover:text-white hover:bg-white/[0.04]"
+                title="Отображение списком"
+              >
+                <i class="fa-solid fa-list-ul text-[11px]"></i>
+                <span data-i18n="viewList">Список</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Separator -->
+          <div class="border-t border-white/5"></div>
+
+          <!-- Category -->
+          <div>
+            <div class="text-[10px] font-semibold uppercase tracking-widest text-slate-500 mb-2 px-1" data-i18n="sidebarCategoryTitle">Категория</div>
+            <div class="space-y-1" id="sidebarCategories">
+              <button data-category="all" class="sidebar-cat-btn w-full text-left px-3 py-2 rounded-xl text-xs font-medium bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 transition-all flex items-center space-x-2">
+                <i class="fa-solid fa-border-all text-[10px] w-4 text-center"></i>
+                <span>Все моды</span>
+              </button>
+              <button data-category="heroes" class="sidebar-cat-btn w-full text-left px-3 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-white/[0.03] transition-all flex items-center space-x-2">
+                <i class="fa-solid fa-mask text-[10px] w-4 text-center"></i>
+                <span>Скины героев</span>
+              </button>
+              <button data-category="hero-items" class="sidebar-cat-btn w-full text-left px-3 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-white/[0.03] transition-all flex items-center space-x-2">
+                <i class="fa-solid fa-shield-halved text-[10px] w-4 text-center"></i>
+                <span>Отдельные предметы</span>
+              </button>
+              <button data-category="high-five" class="sidebar-cat-btn w-full text-left px-3 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-white/[0.03] transition-all flex items-center space-x-2">
+                <i class="fa-solid fa-hand text-[10px] w-4 text-center"></i>
+                <span>High five (Дай пять)</span>
+              </button>
+              <button data-category="attack-fx" class="sidebar-cat-btn w-full text-left px-3 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-white/[0.03] transition-all flex items-center space-x-2">
+                <i class="fa-solid fa-crosshairs text-[10px] w-4 text-center"></i>
+                <span>Эффекты атаки</span>
+              </button>
+              <button data-category="herofx" class="sidebar-cat-btn w-full text-left px-3 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-white/[0.03] transition-all flex items-center space-x-2">
+                <i class="fa-solid fa-wand-magic-sparkles text-[10px] w-4 text-center"></i>
+                <span>Эффекты (FX)</span>
+              </button>
+              <button data-category="packs" class="sidebar-cat-btn w-full text-left px-3 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-white/[0.03] transition-all flex items-center space-x-2">
+                <i class="fa-solid fa-boxes-stacked text-[10px] w-4 text-center"></i>
+                <span>Готовые паки</span>
+              </button>
+              <button data-category="hero-sounds" class="sidebar-cat-btn w-full text-left px-3 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-white/[0.03] transition-all flex items-center space-x-2">
+                <i class="fa-solid fa-volume-high text-[10px] w-4 text-center"></i>
+                <span>Звуки героев</span>
+              </button>
+              <button data-category="mega-kill" class="sidebar-cat-btn w-full text-left px-3 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-white/[0.03] transition-all flex items-center space-x-2">
+                <i class="fa-solid fa-bullhorn text-[10px] w-4 text-center"></i>
+                <span>Озвучка игры</span>
+              </button>
+              <button data-category="shaders" class="sidebar-cat-btn w-full text-left px-3 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-white/[0.03] transition-all flex items-center space-x-2">
+                <i class="fa-solid fa-sun text-[10px] w-4 text-center"></i>
+                <span>Шейдеры</span>
+              </button>
+              <button data-category="creeps" class="sidebar-cat-btn w-full text-left px-3 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-white/[0.03] transition-all flex items-center space-x-2">
+                <i class="fa-solid fa-paw text-[10px] w-4 text-center"></i>
+                <span>Крипы</span>
+              </button>
+              <button data-category="creep-deny" class="sidebar-cat-btn w-full text-left px-3 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-white/[0.03] transition-all flex items-center space-x-2">
+                <i class="fa-solid fa-skull text-[10px] w-4 text-center"></i>
+                <span>Денай крипов</span>
+              </button>
+              <button data-category="wards" class="sidebar-cat-btn w-full text-left px-3 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-white/[0.03] transition-all flex items-center space-x-2">
+                <i class="fa-solid fa-eye text-[10px] w-4 text-center"></i>
+                <span>Варды</span>
+              </button>
+              <button data-category="couriers" class="sidebar-cat-btn w-full text-left px-3 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-white/[0.03] transition-all flex items-center space-x-2">
+                <i class="fa-solid fa-dove text-[10px] w-4 text-center"></i>
+                <span>Курьеры</span>
+              </button>
+              <button data-category="terrains" class="sidebar-cat-btn w-full text-left px-3 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-white/[0.03] transition-all flex items-center space-x-2">
+                <i class="fa-solid fa-mountain-sun text-[10px] w-4 text-center"></i>
+                <span>Карты и ландшафт</span>
+              </button>
+              <button data-category="river" class="sidebar-cat-btn w-full text-left px-3 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-white/[0.03] transition-all flex items-center space-x-2">
+                <i class="fa-solid fa-water text-[10px] w-4 text-center"></i>
+                <span>Реки</span>
+              </button>
+              <button data-category="trees" class="sidebar-cat-btn w-full text-left px-3 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-white/[0.03] transition-all flex items-center space-x-2">
+                <i class="fa-solid fa-tree text-[10px] w-4 text-center"></i>
+                <span>Виды деревьев</span>
+              </button>
+              <button data-category="versus-screens" class="sidebar-cat-btn w-full text-left px-3 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-white/[0.03] transition-all flex items-center space-x-2">
+                <i class="fa-solid fa-bolt-lightning text-[10px] w-4 text-center"></i>
+                <span>Версус экраны</span>
+              </button>
+              <button data-category="backgrounds" class="sidebar-cat-btn w-full text-left px-3 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-white/[0.03] transition-all flex items-center space-x-2">
+                <i class="fa-solid fa-image text-[10px] w-4 text-center"></i>
+                <span>Фоны меню</span>
+              </button>
+              <button data-category="huds" class="sidebar-cat-btn w-full text-left px-3 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-white/[0.03] transition-all flex items-center space-x-2">
+                <i class="fa-solid fa-display text-[10px] w-4 text-center"></i>
+                <span>Интерфейс (HUD)</span>
+              </button>
+              <button data-category="fonts" class="sidebar-cat-btn w-full text-left px-3 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-white/[0.03] transition-all flex items-center space-x-2">
+                <i class="fa-solid fa-font text-[10px] w-4 text-center"></i>
+                <span>Шрифты</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Separator -->
+          <div class="border-t border-white/5"></div>
+
+          <!-- Heroes & Items/Effects Sub-tabs -->
+          <div>
+            <!-- Sub-tab Switcher Header -->
+            <div class="flex items-center bg-[#161a26] p-1 rounded-2xl border border-white/5 mb-3">
+              <button 
+                id="tabHeroesBtn" 
+                onclick="switchEntityTab('heroes')" 
+                class="flex-1 py-1.5 rounded-xl text-xs font-semibold bg-indigo-600 text-white shadow-sm transition-all flex items-center justify-center space-x-1.5"
+              >
+                <i class="fa-solid fa-users text-[10px]"></i>
+                <span data-i18n="tabHeroes">Герои</span>
+                <span id="tabHeroesCount" class="text-[9px] px-1.5 py-0.2 rounded-md bg-black/25 font-mono ml-0.5"></span>
+              </button>
+              <button 
+                id="tabItemsBtn" 
+                onclick="switchEntityTab('items')" 
+                class="flex-1 py-1.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-slate-200 transition-all flex items-center justify-center space-x-1.5"
+              >
+                <i class="fa-solid fa-wand-magic-sparkles text-[10px]"></i>
+                <span data-i18n="tabItems">Предметы</span>
+                <span id="tabItemsCount" class="text-[9px] px-1.5 py-0.2 rounded-md bg-white/10 font-mono ml-0.5"></span>
+              </button>
+            </div>
+
+            <!-- Panel 1: Heroes Only -->
+            <div id="panelHeroesTab" class="space-y-2">
+              <div class="relative">
+                <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-[10px]"></i>
+                <input 
+                  type="text" 
+                  id="heroSearchInput" 
+                  placeholder="Поиск героя (например, Фурион)..." 
+                  class="w-full bg-[#161a26] text-slate-200 placeholder-slate-500 pl-8 pr-3 py-1.5 rounded-xl border border-white/5 text-[11px] focus:outline-none focus:border-indigo-500/50"
+                >
+              </div>
+
+              <!-- Scrollable list of genuine heroes -->
+              <div id="heroPillsContainer" class="space-y-1 max-h-[300px] overflow-y-auto pr-1">
+                <!-- Rendered dynamically via app.js -->
+              </div>
+            </div>
+
+            <!-- Panel 2: Items & Effects Only -->
+            <div id="panelItemsTab" class="space-y-2 hidden">
+              <div class="relative">
+                <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-[10px]"></i>
+                <input 
+                  type="text" 
+                  id="itemSearchInput" 
+                  placeholder="Поиск эффекта (Телепорт, Фонтан, Блинк)..." 
+                  class="w-full bg-[#161a26] text-slate-200 placeholder-slate-500 pl-8 pr-3 py-1.5 rounded-xl border border-white/5 text-[11px] focus:outline-none focus:border-indigo-500/50"
+                >
+              </div>
+
+              <!-- Scrollable list of items and effects -->
+              <div id="itemPillsContainer" class="space-y-1 max-h-[300px] overflow-y-auto pr-1">
+                <!-- Rendered dynamically via app.js -->
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+      </aside>
+
+      <!-- RIGHT: Main Content Area -->
+      <main class="flex-1 min-w-0 w-full">
+
+
+        <div id="modsContainer">
+          <!-- Dynamic Mod Groups or Grid from app.js -->
+        </div>
+      </main>
+
+    </div>
+
+    <!-- Mobile Filter Bar (shown below lg breakpoint) -->
+    <div id="mobileFilterBar" class="lg:hidden mb-5">
+      <div class="p-2 rounded-2xl bg-[#12151e] border border-white/5 space-y-3">
+
+        <!-- Category Tabs (horizontal scroll) -->
+        <div class="flex items-center overflow-x-auto gap-1.5 text-xs font-medium no-scrollbar px-1">
+          <button data-category="all" class="mobile-cat-btn px-3 py-1.5 rounded-xl bg-indigo-600 text-white transition-all shrink-0">
+            Все моды
+          </button>
+          <button data-category="heroes" class="mobile-cat-btn px-3 py-1.5 rounded-xl text-slate-400 hover:text-slate-200 transition-all shrink-0">
+            Скины героев
+          </button>
+          <button data-category="hero-items" class="mobile-cat-btn px-3 py-1.5 rounded-xl text-slate-400 hover:text-slate-200 transition-all shrink-0">
+            Предметы
+          </button>
+          <button data-category="hero-sounds" class="mobile-cat-btn px-3 py-1.5 rounded-xl text-slate-400 hover:text-slate-200 transition-all shrink-0">
+            Звуки героев
+          </button>
+          <button data-category="mega-kill" class="mobile-cat-btn px-3 py-1.5 rounded-xl text-slate-400 hover:text-slate-200 transition-all shrink-0">
+            Озвучка
+          </button>
+          <button data-category="shaders" class="mobile-cat-btn px-3 py-1.5 rounded-xl text-slate-400 hover:text-slate-200 transition-all shrink-0">
+            Шейдеры
+          </button>
+          <button data-category="high-five" class="mobile-cat-btn px-3 py-1.5 rounded-xl text-slate-400 hover:text-slate-200 transition-all shrink-0">
+            High five
+          </button>
+          <button data-category="attack-fx" class="mobile-cat-btn px-3 py-1.5 rounded-xl text-slate-400 hover:text-slate-200 transition-all shrink-0">
+            Атака
+          </button>
+          <button data-category="herofx" class="mobile-cat-btn px-3 py-1.5 rounded-xl text-slate-400 hover:text-slate-200 transition-all shrink-0">
+            Эффекты
+          </button>
+          <button data-category="creeps" class="mobile-cat-btn px-3 py-1.5 rounded-xl text-slate-400 hover:text-slate-200 transition-all shrink-0">
+            Крипы
+          </button>
+          <button data-category="wards" class="mobile-cat-btn px-3 py-1.5 rounded-xl text-slate-400 hover:text-slate-200 transition-all shrink-0">
+            Варды
+          </button>
+          <button data-category="couriers" class="mobile-cat-btn px-3 py-1.5 rounded-xl text-slate-400 hover:text-slate-200 transition-all shrink-0">
+            Курьеры
+          </button>
+          <button data-category="terrains" class="mobile-cat-btn px-3 py-1.5 rounded-xl text-slate-400 hover:text-slate-200 transition-all shrink-0">
+            Карты
+          </button>
+          <button data-category="river" class="mobile-cat-btn px-3 py-1.5 rounded-xl text-slate-400 hover:text-slate-200 transition-all shrink-0">
+            Реки
+          </button>
+          <button data-category="trees" class="mobile-cat-btn px-3 py-1.5 rounded-xl text-slate-400 hover:text-slate-200 transition-all shrink-0">
+            Деревья
+          </button>
+          <button data-category="versus-screens" class="mobile-cat-btn px-3 py-1.5 rounded-xl text-slate-400 hover:text-slate-200 transition-all shrink-0">
+            Версус
+          </button>
+          <button data-category="backgrounds" class="mobile-cat-btn px-3 py-1.5 rounded-xl text-slate-400 hover:text-slate-200 transition-all shrink-0">
+            Фоны
+          </button>
+          <button data-category="huds" class="mobile-cat-btn px-3 py-1.5 rounded-xl text-slate-400 hover:text-slate-200 transition-all shrink-0">
+            HUD
+          </button>
+          <button data-category="fonts" class="mobile-cat-btn px-3 py-1.5 rounded-xl text-slate-400 hover:text-slate-200 transition-all shrink-0">
+            Шрифты
+          </button>
+        </div>
+
+        <!-- Controls -->
+        <div class="flex items-center justify-between px-1 gap-2">
+          <!-- View Toggle -->
+          <div class="flex items-center bg-[#161a26] p-0.5 rounded-xl border border-white/5">
+            <button id="viewGridBtnMobile" onclick="setViewMode('grid')" class="px-2.5 py-1 rounded-lg text-xs font-medium bg-indigo-600 text-white shadow transition-all">
+              <i class="fa-solid fa-table-cells mr-1 text-[10px]"></i>Сетка
+            </button>
+            <button id="viewListBtnMobile" onclick="setViewMode('list')" class="px-2.5 py-1 rounded-lg text-xs font-medium text-slate-400 hover:text-white transition-all">
+              <i class="fa-solid fa-list-ul mr-1 text-[10px]"></i>Список
+            </button>
+          </div>
+
+          <!-- Mobile Hero/Item Tab Toggle -->
+          <div class="flex items-center bg-[#161a26] p-0.5 rounded-xl border border-white/5">
+            <button id="tabHeroesBtnMobile" onclick="switchEntityTab('heroes')" class="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-indigo-600 text-white transition-all">
+              <i class="fa-solid fa-users mr-1 text-[9px]"></i>Герои
+            </button>
+            <button id="tabItemsBtnMobile" onclick="switchEntityTab('items')" class="px-2.5 py-1 rounded-lg text-[11px] font-semibold text-slate-400 hover:text-white transition-all">
+              <i class="fa-solid fa-wand-magic-sparkles mr-1 text-[9px]"></i>Предметы
+            </button>
+          </div>
+        </div>
+
+        <!-- Hero Pills (horizontal) -->
+        <div id="heroPillsContainerMobile" class="flex items-center overflow-x-auto gap-1.5 no-scrollbar px-1 pb-1">
+          <!-- Rendered dynamically -->
+        </div>
+
+        <!-- Item Pills (horizontal) -->
+        <div id="itemPillsContainerMobile" class="flex items-center overflow-x-auto gap-1.5 no-scrollbar px-1 pb-1 hidden">
+          <!-- Rendered dynamically -->
+        </div>
+      </div>
+    </div>
+    <!-- END: mobileFilterBar -->
+  </div>
+  <!-- END: catalogPageView -->
+
+    <!-- PAGE: My Mods (Dedicated Page View) -->
+    <div id="myModsPageView" class="hidden space-y-6">
+
+      <!-- Header & Stats Bar -->
+      <div id="myModsHeaderBanner" class="rounded-3xl p-5 sm:p-6 bg-gradient-to-r from-emerald-950/40 via-[#131724] to-[#12151e] border border-emerald-500/25 shadow-xl shadow-emerald-950/20 relative overflow-hidden transition-all duration-300">
+        <div id="myModsGlow" class="absolute -top-12 -left-12 w-48 h-48 bg-emerald-600/10 rounded-full blur-3xl pointer-events-none transition-all duration-300"></div>
+
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 relative z-10">
+          <div class="flex items-center space-x-3.5">
+            <div id="myModsHeaderIcon" class="w-12 h-12 rounded-2xl bg-emerald-600/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 text-xl shadow-lg shrink-0 transition-all duration-300">
+              <i class="fa-solid fa-folder-tree"></i>
+            </div>
+            <div>
+              <div class="flex items-center space-x-2.5">
+                <h1 class="text-xl sm:text-2xl font-bold text-white tracking-tight" data-i18n="myModsTitle">Мои моды</h1>
+                <span id="myModsSummaryBadge" class="px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 font-mono text-xs font-bold transition-all duration-300">0 модов</span>
+              </div>
+              <p class="text-xs text-slate-400 mt-0.5 flex items-center gap-2 flex-wrap">
+                <span id="myModsStatusDetails" data-i18n="myModsStatusDetails">Управление установленными скинами в игре</span>
+                <span class="text-slate-600">•</span>
+                <span class="text-slate-500 font-mono text-[11px]" id="myModsFolderPath">game/dota_russian</span>
+              </p>
+            </div>
+          </div>
+
+          <!-- Quick Action Buttons -->
+          <div class="flex flex-wrap items-center gap-2.5 sm:gap-3">
+            <!-- Single Toggle Switch for All Mods -->
+            <button 
+              type="button" 
+              id="myModsToggleAllBtn" 
+              onclick="toggleAllDesktopMods()" 
+              class="px-3.5 py-2 rounded-2xl bg-[#161a26] hover:bg-[#1f2436] border border-white/10 text-xs font-semibold flex items-center gap-2.5 transition-all cursor-pointer shadow-sm select-none hover:scale-[1.02] active:scale-95" 
+              title="Включить или выключить все установленные моды"
+            >
+              <div class="relative inline-flex items-center pointer-events-none">
+                <input type="checkbox" id="toggleAllModsSwitch" class="sr-only peer" tabindex="-1">
+                <div class="w-9 h-5 bg-slate-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600 border border-white/10 shadow-inner"></div>
+              </div>
+              <span id="toggleAllModsText" class="text-slate-200 font-medium text-xs whitespace-nowrap pointer-events-none">Все моды</span>
+            </button>
+
+            <button onclick="deleteAllDesktopMods()" class="px-4 py-2.5 rounded-2xl bg-red-600/15 hover:bg-red-600/25 text-red-300 border border-red-500/25 text-xs font-semibold flex items-center gap-2 transition-all shadow-sm hover:scale-[1.02] active:scale-95" title="Удалить все моды">
+              <i class="fa-solid fa-trash text-red-400 text-xs"></i>
+              <span data-i18n="deleteAllBtn">Удалить все</span>
+            </button>
+
+            <div class="h-6 w-px bg-white/10 hidden sm:block"></div>
+
+            <button id="myModsVacBtn" onclick="repairDotaVacFiles()" class="px-3.5 py-2.5 rounded-2xl bg-emerald-600/15 hover:bg-emerald-600/25 text-emerald-300 hover:text-white border border-emerald-500/30 text-xs font-semibold flex items-center gap-2 transition-all hover:scale-[1.02] active:scale-95" title="Восстановить оригинальные системные файлы игры и исправить ошибку VAC">
+              <i class="fa-solid fa-shield-halved text-xs text-emerald-400"></i>
+              <span data-i18n="repairVacBtn">Починить VAC</span>
+            </button>
+
+            <button id="myModsFolderBtn" onclick="openDesktopModsFolder()" class="px-3.5 py-2.5 rounded-2xl bg-[#161a26] hover:bg-[#1e2333] text-slate-300 hover:text-white border border-white/10 text-xs font-medium flex items-center gap-2 transition-all hover:scale-[1.02] active:scale-95" title="Открыть папку с файлами в Проводнике Windows">
+              <i class="fa-solid fa-arrow-up-right-from-square text-xs text-emerald-400"></i>
+              <span data-i18n="folderBtn">Папка</span>
+            </button>
+
+            <button onclick="refreshInstalledMods()" class="px-3.5 py-2.5 rounded-2xl bg-[#161a26] hover:bg-[#1e2333] text-slate-300 hover:text-white border border-white/10 text-xs font-medium flex items-center justify-center transition-all hover:scale-[1.02] active:scale-95" title="Обновить список модов">
+              <i class="fa-solid fa-rotate-right text-xs"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Grid of Installed Mod Cards with Previews -->
+      <div id="installedModsGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <!-- Rendered dynamically via app.js -->
+      </div>
+
+    </div>
+    <!-- END: myModsPageView -->
+
+  </div>
+
+  <!-- Clean Footer -->
+  <footer class="mt-12 border-t border-white/5 bg-[#090b0f] py-6 px-4 sm:px-8 text-xs text-slate-500">
+    <div class="max-w-[1400px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
+      <p>DotaMod Hub © 2026. Некоммерческий фанатский каталог. Dota 2 является товарным знаком Valve Corporation.</p>
+      <div class="flex items-center space-x-4">
+        <a href="https://github.com/h6rd/Dota2PornFxWeb" target="_blank" class="hover:text-indigo-400 transition-colors">GitHub источник</a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- MODAL: Full Preview & Detail View -->
+  <div id="modModal" class="fixed inset-0 z-50 modal-overlay hidden flex items-center justify-center p-3 sm:p-5" onclick="if(event.target === this) closeModModal()">
+    <div class="panel-dark w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl relative flex flex-col max-h-[92vh] border border-white/10" onclick="event.stopPropagation()">
+      
+      <!-- Top Header / Bar -->
+      <div class="px-4 py-3 bg-[#10131c] border-b border-white/5 flex items-center justify-between z-20">
+        <div class="flex items-center space-x-2.5 truncate">
+          <div class="w-7 h-7 rounded-lg overflow-hidden border border-white/10 bg-slate-900 shrink-0">
+            <img id="modalHeroIcon" src="" class="w-full h-full object-cover">
+          </div>
+          <div class="truncate">
+            <span id="modalHero" class="text-[11px] font-bold uppercase tracking-wider text-indigo-400"></span>
+            <span class="text-slate-500 text-xs mx-1">•</span>
+            <span id="modalTitle" class="text-xs sm:text-sm font-bold text-white truncate"></span>
+          </div>
+        </div>
+
+        <div class="flex items-center space-x-2 shrink-0">
+          <a id="modalFullImageBtn" href="#" target="_blank" class="w-8 h-8 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center text-xs transition-colors" title="Открыть картинку в полном размере">
+            <i class="fa-solid fa-up-right-from-square"></i>
+          </a>
+          <button onclick="closeModModal()" class="w-8 h-8 rounded-xl bg-slate-800/80 hover:bg-red-500/80 text-slate-300 hover:text-white flex items-center justify-center transition-colors">
+            <i class="fa-solid fa-xmark text-sm"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Main Preview Area (Uncropped Full Image + Navigation Arrows) -->
+      <div class="relative bg-slate-950 flex items-center justify-center p-2 sm:p-4 overflow-hidden min-h-[260px] max-h-[52vh] flex-1">
+        
+        <!-- Prev Button -->
+        <button id="modalPrevModBtn" onclick="navigatePreview(-1)" class="absolute left-3 z-20 w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-black/60 hover:bg-indigo-600 text-white flex items-center justify-center text-xs sm:text-sm transition-all border border-white/10 shadow-lg hover:scale-105" title="Предыдущий мод (стрелка влево)">
+          <i class="fa-solid fa-chevron-left"></i>
+        </button>
+
+        <!-- Preview Image Container -->
+        <div class="relative w-full h-full flex items-center justify-center">
+          <img 
+            id="modalImage" 
+            src="" 
+            alt="Mod Preview" 
+            class="max-h-[48vh] w-auto max-w-full object-contain rounded-xl shadow-2xl transition-all duration-300"
+          >
+        </div>
+
+        <!-- Next Button -->
+        <button id="modalNextModBtn" onclick="navigatePreview(1)" class="absolute right-3 z-20 w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-black/60 hover:bg-indigo-600 text-white flex items-center justify-center text-xs sm:text-sm transition-all border border-white/10 shadow-lg hover:scale-105" title="Следующий мод (стрелка вправо)">
+          <i class="fa-solid fa-chevron-right"></i>
+        </button>
+
+        <!-- Floating Badges (FX / Icons) -->
+        <div id="modalBadgesContainer" class="absolute bottom-2.5 left-3.5 z-10 flex items-center space-x-1.5">
+          <!-- Dynamic -->
+        </div>
+
+        <div class="absolute bottom-2.5 right-3.5 z-10 bg-black/70 px-2 py-0.5 rounded-lg text-[10px] text-slate-400 font-mono">
+          Превью скина
+        </div>
+      </div>
+
+      <!-- Video / Media Player Section (For mods with individual .mp4 preview clips) -->
+      <div id="modalMediaVideoContainer" class="p-3 sm:p-4 bg-[#0d1017] border-t border-white/5 space-y-2 hidden">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center space-x-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-indigo-500 animate-pulse"></span>
+            <span class="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+              <i class="fa-solid fa-circle-play text-indigo-400"></i>
+              <span>Оригинальное превью мода</span>
+            </span>
+          </div>
+          <span class="text-[10px] text-emerald-400 font-mono bg-emerald-950/60 px-2 py-0.5 rounded-lg border border-emerald-500/30">Звук мода HD</span>
+        </div>
+        <div class="relative rounded-2xl overflow-hidden bg-black/90 border border-white/10 flex items-center justify-center p-1">
+          <video id="modalMediaVideo" controls playsinline class="w-full max-h-[220px] rounded-xl object-contain"></video>
+        </div>
+      </div>
+
+      <!-- Voice Lines Audio Player Section (Shown for Announcers & Voice Packs) -->
+      <div id="modalAudioSection" class="p-3 sm:p-4 bg-[#0d1017] border-t border-white/5 space-y-2.5 hidden">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center space-x-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" id="audioLiveDot"></span>
+            <span class="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+              <i class="fa-solid fa-volume-high text-indigo-400"></i>
+              <span>Прослушивание озвучки</span>
+            </span>
+            <span id="audioNowPlaying" class="text-[11px] text-indigo-300 font-medium hidden sm:inline truncate max-w-[200px]"></span>
+          </div>
+
+          <div class="flex items-center space-x-2">
+            <button id="audioStopBtn" onclick="stopVoiceLine()" class="px-2.5 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-[11px] font-medium flex items-center gap-1 border border-white/5">
+              <i class="fa-solid fa-stop text-[9px] text-red-400"></i>
+              <span>Стоп</span>
+            </button>
+            <div class="flex items-center space-x-1.5 text-slate-400 text-xs pl-2 border-l border-white/10">
+              <i class="fa-solid fa-volume-low text-[10px]"></i>
+              <input id="audioVolumeSlider" type="range" min="0" max="1" step="0.05" value="0.85" oninput="setAudioVolume(this.value)" class="w-16 accent-indigo-500 cursor-pointer h-1 bg-slate-800 rounded-lg">
+            </div>
+          </div>
+        </div>
+
+        <!-- Audio Wave Visualizer -->
+        <div id="audioVisualizer" class="h-7 bg-[#131622] rounded-xl px-3 flex items-center justify-between border border-white/5 overflow-hidden">
+          <div class="flex items-center space-x-1 h-3.5" id="eqBarsLeft">
+            <span class="eq-bar w-1 bg-indigo-500 rounded-full h-1"></span>
+            <span class="eq-bar w-1 bg-indigo-400 rounded-full h-2"></span>
+            <span class="eq-bar w-1 bg-indigo-300 rounded-full h-3"></span>
+            <span class="eq-bar w-1 bg-indigo-400 rounded-full h-1.5"></span>
+            <span class="eq-bar w-1 bg-indigo-500 rounded-full h-2.5"></span>
+          </div>
+          <span id="audioStatusText" class="text-[10px] text-slate-400 font-mono truncate px-2">Выберите фразу для воспроизведения</span>
+          <div class="flex items-center space-x-1 h-3.5" id="eqBarsRight">
+            <span class="eq-bar w-1 bg-indigo-300 rounded-full h-1.5"></span>
+            <span class="eq-bar w-1 bg-indigo-400 rounded-full h-3"></span>
+            <span class="eq-bar w-1 bg-indigo-500 rounded-full h-2"></span>
+            <span class="eq-bar w-1 bg-indigo-400 rounded-full h-1"></span>
+            <span class="eq-bar w-1 bg-indigo-500 rounded-full h-2.5"></span>
+          </div>
+        </div>
+
+        <!-- Voice Samples Grid -->
+        <div id="audioButtonsGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-1.5 max-h-[175px] overflow-y-auto pr-1">
+          <!-- Dynamically populated with sound chips -->
+        </div>
+      </div>
+
+      <!-- Info & Actions Footer -->
+      <div class="p-4 bg-[#12151e] border-t border-white/5 space-y-3">
+        <div class="grid grid-cols-3 gap-2 p-2.5 rounded-2xl bg-[#161a26] border border-white/5 text-center text-xs">
+          <div>
+            <span class="text-slate-500 block text-[9px] uppercase font-semibold">Категория</span>
+            <span id="modalCategory" class="text-slate-200 font-medium"></span>
+          </div>
+          <div>
+            <span class="text-slate-500 block text-[9px] uppercase font-semibold">Автор</span>
+            <span id="modalAuthor" class="text-slate-200 font-medium"></span>
+          </div>
+          <div>
+            <span class="text-slate-500 block text-[9px] uppercase font-semibold">Размер</span>
+            <span id="modalSize" class="text-slate-200 font-medium font-mono"></span>
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="flex flex-wrap items-center gap-2.5">
+          <button 
+            id="modalSetBgBtn" 
+            onclick="applyCurrentModAsBg()" 
+            class="hidden px-3.5 py-2.5 rounded-2xl bg-indigo-600/30 hover:bg-indigo-600 text-indigo-200 hover:text-white border border-indigo-500/40 text-xs font-semibold flex items-center space-x-2 transition-all shadow-md shadow-indigo-600/20"
+            title="Установить этот арт как фон сайта"
+          >
+            <i class="fa-solid fa-wand-magic-sparkles text-indigo-400"></i>
+            <span>Сделать фоном сайта</span>
+          </button>
+
+          <a 
+            id="modalDownloadBtn" 
+            href="#" 
+            target="_blank" 
+            class="flex-1 min-w-[140px] py-2.5 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs flex items-center justify-center space-x-2 transition-all shadow-md shadow-indigo-600/20"
+          >
+            <i class="fa-solid fa-download"></i>
+            <span>Скачать архив (.VPK)</span>
+          </a>
+
+          <button 
+            id="modalFavBtn" 
+            onclick="toggleFavoriteFromModal()" 
+            class="px-4 py-2.5 rounded-2xl bg-[#161a28] hover:bg-[#1f2436] text-slate-300 hover:text-red-400 border border-white/5 text-xs font-medium flex items-center space-x-1.5 transition-colors"
+          >
+            <i class="fa-regular fa-heart"></i>
+            <span class="hidden sm:inline">Избранное</span>
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- MODAL: Pure Expanded Image View (Opens on clicking big image) -->
+  <div id="imageLightboxModal" class="fixed inset-0 z-50 modal-overlay hidden flex flex-col items-center justify-center p-3 sm:p-6" onclick="if(event.target === this) closeImageLightbox()">
+    
+    <!-- Top Action Bar -->
+    <div class="absolute top-4 left-4 right-4 z-50 flex items-center justify-between pointer-events-none">
+      <div class="flex items-center space-x-2 bg-black/75 backdrop-blur-md px-3.5 py-2 rounded-2xl border border-white/10 text-xs text-white pointer-events-auto shadow-xl">
+        <i class="fa-solid fa-image text-indigo-400"></i>
+        <span id="imageLightboxTitle" class="font-bold truncate max-w-[220px] sm:max-w-md"></span>
+        <a id="imageLightboxFullLink" href="#" target="_blank" class="text-indigo-400 hover:text-white ml-2 text-xs flex items-center gap-1 transition-colors" title="Открыть в новой вкладке">
+          <i class="fa-solid fa-up-right-from-square text-[10px]"></i>
+          <span class="hidden sm:inline">Оригинал</span>
+        </a>
+      </div>
+
+      <button onclick="closeImageLightbox()" class="w-10 h-10 rounded-2xl bg-black/75 hover:bg-red-500/80 text-white flex items-center justify-center text-sm transition-colors border border-white/10 pointer-events-auto shadow-xl" title="Закрыть (Esc)">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+
+    <!-- Centered Full Image -->
+    <div class="relative max-w-5xl max-h-[85vh] flex items-center justify-center overflow-auto rounded-3xl p-1 z-40">
+      <img 
+        id="imageLightboxImg" 
+        src="" 
+        alt="Expanded Preview" 
+        class="max-h-[80vh] w-auto max-w-full object-contain rounded-2xl shadow-2xl transition-transform duration-200 cursor-zoom-in"
+        onclick="toggleLightboxZoom(this)"
+        title="Нажмите для приближения/отдаления"
+      >
+    </div>
+
+    <!-- Bottom Hint -->
+    <div class="absolute bottom-4 z-40 bg-black/75 backdrop-blur-md px-3.5 py-1.5 rounded-xl border border-white/10 text-[11px] text-slate-300 pointer-events-none flex items-center space-x-2 shadow-lg">
+      <i class="fa-solid fa-magnifying-glass text-indigo-400 text-[10px]"></i>
+      <span>Кликните на изображение для увеличения • <b>Esc</b> для закрытия</span>
+    </div>
+  </div>
+
+  <!-- MODAL: Favorites (Enlarged and Enhanced) -->
+  <div id="favModal" class="fixed inset-0 z-50 modal-overlay hidden flex items-center justify-center p-4 sm:p-6" onclick="if(event.target === this) closeFavModal()">
+    <div class="panel-dark w-full max-w-4xl rounded-3xl overflow-hidden shadow-2xl relative flex flex-col max-h-[88vh] border border-white/10 bg-[#12151e]">
+      
+      <!-- Header -->
+      <div class="px-6 py-4.5 bg-[#141824] border-b border-white/5 flex items-center justify-between">
+        <div class="flex items-center space-x-3">
+          <div class="w-10 h-10 rounded-2xl bg-red-500/20 border border-red-500/30 flex items-center justify-center text-red-400 shadow-inner">
+            <i class="fa-solid fa-heart text-base"></i>
+          </div>
+          <div>
+            <div class="flex items-center space-x-2">
+              <h3 class="text-base sm:text-lg font-bold text-white tracking-wide">Избранные модификации</h3>
+              <span id="favModalBadge" class="px-2.5 py-0.5 rounded-full bg-red-500/20 text-red-300 border border-red-500/30 text-xs font-mono font-bold">0</span>
+            </div>
+            <p class="text-xs text-slate-400 mt-0.5">Быстрый доступ к вашим сохранённым скинам и эффектам</p>
+          </div>
+        </div>
+
+        <div class="flex items-center space-x-2">
+          <button id="clearFavsBtn" onclick="clearAllFavorites()" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-rose-900/40 text-slate-300 hover:text-rose-300 text-xs font-semibold border border-white/5 transition-all flex items-center gap-1.5" title="Очистить все избранные">
+            <i class="fa-solid fa-trash-can text-[11px]"></i>
+            <span class="hidden sm:inline">Очистить всё</span>
+          </button>
+          <button onclick="closeFavModal()" class="w-9 h-9 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center text-sm transition-colors">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Body: Scrollable Grid -->
+      <div class="p-6 overflow-y-auto max-h-[calc(88vh-80px)]">
+        <div id="favList" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+          <!-- Rendered in app.js -->
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+
+
+  <!-- MODAL: Background Customizer -->
+  <div id="bgModal" class="fixed inset-0 z-50 modal-overlay hidden flex items-center justify-center p-3 sm:p-5" onclick="if(event.target === this) closeBgModal()">
+    <div class="panel-dark w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl relative flex flex-col max-h-[92vh] border border-white/10" onclick="event.stopPropagation()">
+      
+      <!-- Header -->
+      <div class="px-5 py-4 bg-[#10131c] border-b border-white/5 flex items-center justify-between">
+        <div class="flex items-center space-x-2.5">
+          <div class="w-8 h-8 rounded-xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
+            <i class="fa-solid fa-image text-sm"></i>
+          </div>
+          <div>
+            <h3 class="text-sm sm:text-base font-bold text-white">Настройка фона сайта</h3>
+            <p class="text-[11px] text-slate-400">Выберите официальный арт Dota 2 или загрузите свое изображение</p>
+          </div>
+        </div>
+
+        <button onclick="closeBgModal()" class="w-8 h-8 rounded-xl bg-[#161a26] text-slate-400 hover:text-white flex items-center justify-center text-xs transition-colors border border-white/5">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Body (Scrollable) -->
+      <div class="p-5 space-y-5 overflow-y-auto no-scrollbar">
+
+        <!-- Controls: Blur & Dimming -->
+        <div class="p-4 rounded-2xl bg-[#161a26] border border-white/5 space-y-3.5">
+          <div class="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+            <i class="fa-solid fa-sliders text-indigo-400 text-xs"></i>
+            <span>Параметры отображения</span>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <!-- Dimming -->
+            <div class="space-y-1.5">
+              <div class="flex items-center justify-between text-xs">
+                <span class="text-slate-300 font-medium">Затемнение фона</span>
+                <span id="bgDimLabel" class="text-indigo-400 font-mono font-bold">75%</span>
+              </div>
+              <input id="bgDimSlider" type="range" min="15" max="95" step="5" value="75" oninput="setBgDim(this.value)" class="w-full accent-indigo-500 cursor-pointer h-1.5 bg-slate-800 rounded-lg">
+            </div>
+
+            <!-- Blur -->
+            <div class="space-y-1.5">
+              <div class="flex items-center justify-between text-xs">
+                <span class="text-slate-300 font-medium">Размытие (Blur)</span>
+                <span id="bgBlurLabel" class="text-indigo-400 font-mono font-bold">4px</span>
+              </div>
+              <input id="bgBlurSlider" type="range" min="0" max="25" step="1" value="4" oninput="setBgBlur(this.value)" class="w-full accent-indigo-500 cursor-pointer h-1.5 bg-slate-800 rounded-lg">
+            </div>
+          </div>
+        </div>
+
+        <!-- Custom Upload or URL -->
+        <div class="p-4 rounded-2xl bg-[#161a26] border border-white/5 space-y-3">
+          <div class="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+            <i class="fa-solid fa-upload text-indigo-400 text-xs"></i>
+            <span>Добавить свой фон</span>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <!-- File Upload -->
+            <label class="p-3.5 rounded-xl border border-dashed border-white/15 hover:border-indigo-500/50 bg-[#12151e] hover:bg-indigo-600/5 flex flex-col items-center justify-center text-center cursor-pointer transition-all group">
+              <i class="fa-solid fa-cloud-arrow-up text-lg text-indigo-400 mb-1.5 group-hover:scale-110 transition-transform"></i>
+              <span class="text-xs font-semibold text-slate-200">Загрузить файл с ПК</span>
+              <span class="text-[10px] text-slate-500 mt-0.5">PNG, JPG, WebP до 15MB</span>
+              <input type="file" id="bgFileInput" accept="image/*" class="hidden" onchange="handleBgFileUpload(event)">
+            </label>
+
+            <!-- URL Input -->
+            <div class="p-3.5 rounded-xl bg-[#12151e] border border-white/5 flex flex-col justify-between">
+              <span class="text-xs font-semibold text-slate-200 mb-1.5">Прямая ссылка на арт:</span>
+              <div class="flex items-center gap-1.5">
+                <input type="url" id="bgUrlInput" placeholder="https://.../wallpaper.jpg" class="flex-1 bg-[#161a26] text-slate-200 placeholder-slate-500 px-2.5 py-1.5 rounded-lg border border-white/10 text-xs focus:outline-none focus:border-indigo-500">
+                <button onclick="applyCustomBgUrl()" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shrink-0">ОК</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Presets Grid -->
+        <div class="space-y-3">
+          <div class="flex items-center justify-between flex-wrap gap-2">
+            <div class="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+              <i class="fa-solid fa-palette text-indigo-400 text-xs"></i>
+              <span>Фоны и обои Dota 2</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <!-- Filter Tabs: All / Video / Picture -->
+              <div class="flex items-center bg-[#161a26] p-0.5 rounded-xl border border-white/10 text-[11px]">
+                <button type="button" id="bgFilterTabAll" onclick="setBgPresetFilter('all')" class="px-2.5 py-1 rounded-lg font-bold bg-indigo-600 text-white shadow-sm transition-all">Все</button>
+                <button type="button" id="bgFilterTabVideo" onclick="setBgPresetFilter('video')" class="px-2.5 py-1 rounded-lg font-medium text-slate-400 hover:text-white transition-all flex items-center gap-1"><i class="fa-solid fa-video text-[9px] text-rose-400"></i>Видео</button>
+                <button type="button" id="bgFilterTabImage" onclick="setBgPresetFilter('image')" class="px-2.5 py-1 rounded-lg font-medium text-slate-400 hover:text-white transition-all flex items-center gap-1"><i class="fa-solid fa-image text-[9px] text-sky-400"></i>Картинки</button>
+              </div>
+              <button onclick="resetBackground()" class="text-xs text-rose-400 hover:text-rose-300 font-medium flex items-center gap-1 transition-colors pl-1">
+                <i class="fa-solid fa-arrow-rotate-left text-[10px]"></i>
+                <span>Сбросить</span>
+              </button>
+            </div>
+          </div>
+
+          <div id="bgPresetsGrid" class="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-[380px] overflow-y-auto pr-1">
+            <!-- Dynamically populated from catalog & presets via app.js -->
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Footer -->
+      <div class="px-5 py-3.5 bg-[#10131c] border-t border-white/5 flex items-center justify-between text-xs">
+        <span class="text-slate-400">Фон сохраняется автоматически</span>
+        <button onclick="closeBgModal()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold transition-colors">
+          Готово
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- MODAL: App Update Notification & Changelog -->
+  <div id="updateModal" class="fixed inset-0 z-50 modal-overlay hidden flex items-center justify-center p-4" onclick="if(event.target === this) closeUpdateModal()">
+    <div class="panel-dark w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl border border-indigo-500/30 flex flex-col relative bg-[#12151e]">
+      
+      <!-- Header -->
+      <div class="p-5 pb-4 border-b border-white/5 flex items-center justify-between bg-gradient-to-r from-indigo-950/40 via-[#151928] to-[#12151e]">
+        <div class="flex items-center space-x-3">
+          <div class="w-10 h-10 rounded-2xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 shrink-0">
+            <i class="fa-solid fa-bolt text-amber-400 text-base"></i>
+          </div>
+          <div>
+            <div class="flex items-center space-x-2">
+              <h3 class="text-base font-bold text-white tracking-wide">Обновление DotaMod Hub</h3>
+              <span id="targetModalVersionBadge" class="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-bold border border-emerald-500/30">v1.7.0</span>
+            </div>
+            <p class="text-xs text-slate-400 mt-0.5">Текущая версия: <span id="currentModalVersionText" class="font-mono text-slate-300">v1.5.0</span></p>
+          </div>
+        </div>
+        <button onclick="closeUpdateModal()" class="w-8 h-8 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center text-xs transition-colors">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Body / Changelog -->
+      <div class="p-5 space-y-4 max-h-[60vh] overflow-y-auto no-scrollbar text-xs">
+        <div class="p-3.5 rounded-2xl bg-[#161a26] border border-white/5">
+          <span class="text-xs font-bold text-indigo-300 uppercase tracking-wider block mb-2">Что нового в обновлении DotaMod Hub v1.7.0:</span>
+          <ul class="space-y-2 text-slate-300">
+            <li class="flex items-start space-x-2.5">
+              <i class="fa-solid fa-clapperboard text-emerald-400 mt-0.5 text-[11px] shrink-0"></i>
+              <span><b>Фоны главного меню и поддержка WebM:</b> Полное исправление видеофонов (Sematary, Dark Tree, Bliss, Xvii и др.). Все видеофайлы <code class="text-emerald-300 font-mono">zxc.webm</code> и разметка Panorama Source 2 автоматически распаковываются на диск и воспроизводятся в главном меню без вылетов.</span>
+            </li>
+            <li class="flex items-start space-x-2.5">
+              <i class="fa-solid fa-shield-halved text-emerald-400 mt-0.5 text-[11px] shrink-0"></i>
+              <span><b>Защита от VAC и чистый gameinfo.gi:</b> Моды изолированы, системные файлы Valve остаются оригинальными — ошибка «VAC не может проверить устройство» полностью исключена.</span>
+            </li>
+            <li class="flex items-start space-x-2.5">
+              <i class="fa-solid fa-globe text-indigo-400 mt-0.5 text-[11px] shrink-0"></i>
+              <span><b>Синхронизация для русской и английской версий:</b> Моды и фоны дублируются во все языковые каталоги клиента, гарантируя загрузку при любом языке Steam.</span>
+            </li>
+            <li class="flex items-start space-x-2.5">
+              <i class="fa-solid fa-circle-check text-emerald-400 mt-0.5 text-[11px] shrink-0"></i>
+              <span><b>Сохранение статуса модов:</b> Статус «Установлен» сохраняется при любых переходах по каталогу и поиску.</span>
+            </li>
+            <li class="flex items-start space-x-2.5">
+              <i class="fa-solid fa-bolt text-indigo-400 mt-0.5 text-[11px] shrink-0"></i>
+              <span><b>Глобальная оптимизация 60 FPS:</b> Бесконечный скролл с порционной подгрузкой по 36 модов, аппаратное GPU-ускорение картинок и моментальный поиск.</span>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Update Progress Section (Hidden initially) -->
+        <div id="updateProgressContainer" class="hidden p-4 rounded-2xl bg-[#161a26] border border-indigo-500/20 space-y-2.5">
+          <div class="flex items-center justify-between text-xs">
+            <span id="updateProgressStatus" class="text-indigo-300 font-semibold flex items-center gap-2">
+              <i class="fa-solid fa-spinner fa-spin text-xs"></i>
+              <span>Загрузка файлов обновления...</span>
+            </span>
+            <span id="updateProgressPercent" class="text-slate-400 font-mono font-bold">0%</span>
+          </div>
+          <div class="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
+            <div id="updateProgressBar" class="bg-gradient-to-r from-indigo-500 to-emerald-500 h-full rounded-full transition-all duration-300" style="width: 0%"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer Buttons -->
+      <div class="p-4 bg-[#10131c] border-t border-white/5 flex items-center justify-between text-xs">
+        <button id="updateModalDismissBtn" onclick="dismissUpdateNotification(); closeUpdateModal();" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white font-semibold transition-all flex items-center gap-1.5">
+          <i class="fa-regular fa-clock text-[11px]"></i>
+          <span data-i18n="updateLaterBtn">Позже</span>
+        </button>
+        <button id="applyUpdateBtn" onclick="applyAppUpdate()" class="px-5 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-emerald-600 hover:from-indigo-500 hover:to-emerald-500 text-white font-bold shadow-md shadow-indigo-600/25 transition-all flex items-center space-x-1.5">
+          <i class="fa-solid fa-download text-[11px]"></i>
+          <span data-i18n="applyUpdateBtn">Обновить сейчас</span>
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- MODAL: Settings -->
+  <div id="settingsModal" class="fixed inset-0 z-50 modal-overlay hidden flex items-center justify-center p-4" onclick="if(event.target === this) closeSettingsModal()">
+    <div class="panel-dark w-full max-w-xl rounded-3xl overflow-hidden shadow-2xl border border-white/10 flex flex-col relative bg-[#12151e]">
+      
+      <!-- Header -->
+      <div class="p-5 pb-4 border-b border-white/5 flex items-center justify-between bg-[#141824]">
+        <div class="flex items-center space-x-3">
+          <div class="w-9 h-9 rounded-xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 shrink-0">
+            <i class="fa-solid fa-gear text-sm"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-white tracking-wide" data-i18n="settingsTitle">Настройки DotaMod Hub</h3>
+            <p class="text-xs text-slate-400 mt-0.5" data-i18n="settingsSubtitle">Конфигурация Dota 2, кастомизация и интеграции</p>
+          </div>
+        </div>
+        <button onclick="closeSettingsModal()" class="w-8 h-8 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center text-xs transition-colors">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Quick Navigation Tabs -->
+      <div class="px-5 py-2.5 bg-[#10131c] border-b border-white/5 flex items-center gap-1.5 overflow-x-auto text-[11px] shrink-0 no-scrollbar">
+        <button type="button" onclick="scrollToSettingsSection('sectionSettingsDota')" class="px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white transition-all flex items-center gap-1.5 whitespace-nowrap">
+          <i class="fa-brands fa-steam text-indigo-400"></i>
+          <span>Dota 2</span>
+        </button>
+        <button type="button" onclick="scrollToSettingsSection('sectionSettingsVac')" class="px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white transition-all flex items-center gap-1.5 whitespace-nowrap">
+          <i class="fa-solid fa-shield-halved text-emerald-400"></i>
+          <span>Защита VAC</span>
+        </button>
+        <button type="button" onclick="scrollToSettingsSection('sectionSettingsDiscord')" class="px-3 py-1.5 rounded-xl bg-[#5865F2]/20 hover:bg-[#5865F2]/30 text-indigo-200 border border-[#5865F2]/35 transition-all flex items-center gap-1.5 whitespace-nowrap font-semibold shadow-sm">
+          <i class="fa-brands fa-discord text-[#5865F2]"></i>
+          <span>Discord</span>
+        </button>
+        <button type="button" onclick="scrollToSettingsSection('sectionSettingsTheme')" class="px-2.5 py-1.5 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 hover:text-white border border-indigo-500/30 transition-all flex items-center gap-1.5 whitespace-nowrap font-semibold">
+          <i class="fa-solid fa-palette text-indigo-400"></i>
+          <span>Цвет и стиль</span>
+        </button>
+        <button type="button" onclick="scrollToSettingsSection('sectionSettingsLang')" class="px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white transition-all flex items-center gap-1.5 whitespace-nowrap">
+          <i class="fa-solid fa-language text-amber-400"></i>
+          <span>Язык</span>
+        </button>
+        <button type="button" onclick="scrollToSettingsSection('sectionSettingsUpdates')" class="px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white transition-all flex items-center gap-1.5 whitespace-nowrap">
+          <i class="fa-solid fa-arrows-rotate text-purple-400"></i>
+          <span>Обновления</span>
+        </button>
+      </div>
+
+      <!-- Body -->
+      <div id="settingsBodyContainer" class="p-5 space-y-4 max-h-[66vh] overflow-y-auto text-xs pr-3">
+        
+        <!-- Dota 2 Game Path -->
+        <div id="sectionSettingsDota" class="p-4 rounded-2xl bg-[#161a26] border border-white/5 space-y-2.5 transition-all duration-300">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-white flex items-center gap-1.5">
+              <i class="fa-brands fa-steam text-indigo-400 text-sm"></i>
+              <span data-i18n="settingsPathTitle">Путь к установленной Dota 2</span>
+            </span>
+            <span class="text-[10px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full font-semibold" data-i18n="settingsPathFound">Найдена</span>
+          </div>
+          <p class="text-[11px] text-slate-400" data-i18n="settingsPathDesc">Каталог игры для установки VPK-модов, звуков и скриптов</p>
+          <div class="flex items-center gap-2">
+            <input 
+              type="text" 
+              id="settingsGamePathInput" 
+              class="flex-1 bg-[#12151e] text-slate-200 border border-white/10 rounded-xl px-3 py-2 text-xs font-mono focus:outline-none focus:border-indigo-500" 
+              placeholder="C:\Program Files (x86)\Steam\steamapps\common\dota 2 beta\game\dota"
+            >
+            <button onclick="browseDotaPath()" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold border border-white/5 shrink-0 transition-colors" data-i18n="settingsBrowseBtn">
+              Выбрать
+            </button>
+          </div>
+        </div>
+
+        <!-- Launch Options -->
+        <div class="p-4 rounded-2xl bg-[#161a26] border border-white/5 space-y-2.5">
+          <span class="font-bold text-white flex items-center gap-1.5">
+            <i class="fa-solid fa-terminal text-indigo-400 text-xs"></i>
+            <span data-i18n="settingsLaunchTitle">Параметры запуска Dota 2</span>
+          </span>
+          <p class="text-[11px] text-slate-400" data-i18n="settingsLaunchDesc">Аргументы командной строки при нажатии кнопки «Играть»</p>
+          <input 
+            type="text" 
+            id="settingsLaunchArgsInput" 
+            class="w-full bg-[#12151e] text-slate-200 border border-white/10 rounded-xl px-3 py-2 text-xs font-mono focus:outline-none focus:border-indigo-500" 
+            placeholder="-novid -high -map dota -dx11"
+          >
+          <div class="flex flex-wrap gap-1.5 pt-1">
+            <span class="text-[10px] text-slate-500 self-center mr-1" data-i18n="settingsQuickFlags">Быстрые флаги:</span>
+            <button type="button" onclick="appendLaunchArg('-novid')" class="px-2 py-0.5 rounded-lg bg-white/5 hover:bg-indigo-600/30 text-slate-300 text-[10px] font-mono border border-white/5">+ -novid</button>
+            <button type="button" onclick="appendLaunchArg('-high')" class="px-2 py-0.5 rounded-lg bg-white/5 hover:bg-indigo-600/30 text-slate-300 text-[10px] font-mono border border-white/5">+ -high</button>
+            <button type="button" onclick="appendLaunchArg('-map dota')" class="px-2 py-0.5 rounded-lg bg-white/5 hover:bg-indigo-600/30 text-slate-300 text-[10px] font-mono border border-white/5">+ -map dota</button>
+            <button type="button" onclick="appendLaunchArg('+fps_max 0')" class="px-2 py-0.5 rounded-lg bg-white/5 hover:bg-indigo-600/30 text-slate-300 text-[10px] font-mono border border-white/5">+ +fps_max 0</button>
+          </div>
+        </div>
+
+        <!-- Sound Preview Volume -->
+        <div class="p-4 rounded-2xl bg-[#161a26] border border-white/5 space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-white flex items-center gap-1.5">
+              <i class="fa-solid fa-volume-high text-indigo-400 text-xs"></i>
+              <span data-i18n="settingsSoundTitle">Громкость превью звуков</span>
+            </span>
+            <span id="settingsVolumeLabel" class="text-indigo-400 font-mono font-bold">80%</span>
+          </div>
+          <input 
+            type="range" 
+            id="settingsVolumeSlider" 
+            min="0" 
+            max="100" 
+            value="80" 
+            oninput="document.getElementById('settingsVolumeLabel').textContent = this.value + '%'" 
+            class="w-full accent-indigo-500 cursor-pointer h-1.5 bg-slate-800 rounded-lg"
+          >
+        </div>
+
+        <!-- VAC Safety & Integrity -->
+        <div id="sectionSettingsVac" class="p-4 rounded-2xl bg-[#161a26] border border-emerald-500/20 space-y-2.5 transition-all duration-300">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-white flex items-center gap-1.5">
+              <i class="fa-solid fa-shield-halved text-emerald-400 text-xs"></i>
+              <span data-i18n="settingsVacTitle">Защита VAC и целостность игры</span>
+            </span>
+            <span class="text-[10px] text-emerald-400 font-semibold px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/20" data-i18n="settingsVacSafe">Безопасно</span>
+          </div>
+          <p class="text-[11px] text-slate-400 leading-relaxed" data-i18n="settingsVacDesc">
+            Моды монтируются через изолированную системную директорию без правки системных файлов Valve. Если у вас ранее появлялась ошибка «VAC не может проверить устройство», нажмите кнопку ниже для восстановления оригинального gameinfo.gi.
+          </p>
+          <button onclick="repairDotaVacFiles()" class="w-full px-3 py-2 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 hover:text-white font-semibold border border-emerald-500/30 transition-all flex items-center justify-center gap-1.5">
+            <i class="fa-solid fa-shield-virus text-[11px]"></i>
+            <span data-i18n="settingsVacBtn">Починить файлы игры (Сброс ошибки VAC)</span>
+          </button>
+        </div>
+
+        <!-- Discord Rich Presence (Clean single line toggle only) -->
+        <div id="sectionSettingsDiscord" class="p-4 rounded-2xl bg-[#161a26] border border-white/5 flex items-center justify-between transition-all duration-300">
+          <div class="flex items-center space-x-3">
+            <div class="w-8 h-8 rounded-xl bg-[#5865F2]/20 border border-[#5865F2]/30 flex items-center justify-center text-[#5865F2] shrink-0">
+              <i class="fa-brands fa-discord text-base"></i>
+            </div>
+            <div>
+              <span class="font-bold text-white text-xs block" data-i18n="settingsDiscordTitle">Активность в Discord</span>
+              <p class="text-[11px] text-slate-400 mt-0.5">Отображать статус ModHub в профиле Discord</p>
+            </div>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer ml-3 shrink-0">
+            <input type="checkbox" id="settingsDiscordToggle" class="sr-only peer" onchange="toggleDiscordRPC(this.checked)">
+            <div class="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#5865F2]"></div>
+          </label>
+        </div>
+
+        <!-- Customizer: Skinchanger Color & Blend with Background -->
+        <div id="sectionSettingsTheme" class="p-4 rounded-2xl bg-[#161a26] border border-white/5 space-y-3.5 transition-all duration-300">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-white flex items-center gap-1.5 text-xs">
+              <i class="fa-solid fa-palette text-indigo-400 text-xs"></i>
+              <span>Цвет и стиль скинченджера</span>
+            </span>
+          </div>
+
+          <!-- Blend with Background Toggle (Glassmorphism) -->
+          <div class="p-3 rounded-xl bg-[#12151e] border border-white/5 flex items-center justify-between">
+            <div class="space-y-0.5 pr-2">
+              <span class="text-xs font-semibold text-white flex items-center gap-1.5">
+                <i class="fa-solid fa-wand-magic-sparkles text-amber-400 text-[11px]"></i>
+                <span>Сливаться с фоном (Стеклянный эффект)</span>
+              </span>
+              <p class="text-[11px] text-slate-400">Прозрачный интерфейс (Glassmorphism), сквозь который плавно виден арт фона</p>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer shrink-0">
+              <input type="checkbox" id="settingsGlassBlendToggle" class="sr-only peer" onchange="toggleGlassBlend(this.checked)">
+              <div class="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+            </label>
+          </div>
+
+          <!-- Accent Color Palette -->
+          <div class="space-y-2 pt-1">
+            <span class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider block">Цветовой акцент приложения:</span>
+            <div class="flex flex-wrap items-center gap-2.5" id="accentColorPalette">
+              <button type="button" onclick="setAccentColor('#6366f1')" class="accent-color-btn w-7 h-7 rounded-full bg-[#6366f1] ring-2 ring-white/30 hover:scale-110 transition-transform shadow-md" title="Индиго / Фиолетовый"></button>
+              <button type="button" onclick="setAccentColor('#10b981')" class="accent-color-btn w-7 h-7 rounded-full bg-[#10b981] ring-2 ring-transparent hover:ring-white/30 hover:scale-110 transition-transform shadow-md" title="Изумрудный"></button>
+              <button type="button" onclick="setAccentColor('#06b6d4')" class="accent-color-btn w-7 h-7 rounded-full bg-[#06b6d4] ring-2 ring-transparent hover:ring-white/30 hover:scale-110 transition-transform shadow-md" title="Лазурный"></button>
+              <button type="button" onclick="setAccentColor('#ef4444')" class="accent-color-btn w-7 h-7 rounded-full bg-[#ef4444] ring-2 ring-transparent hover:ring-white/30 hover:scale-110 transition-transform shadow-md" title="Красный"></button>
+              <button type="button" onclick="setAccentColor('#f59e0b')" class="accent-color-btn w-7 h-7 rounded-full bg-[#f59e0b] ring-2 ring-transparent hover:ring-white/30 hover:scale-110 transition-transform shadow-md" title="Золотой"></button>
+              <button type="button" onclick="setAccentColor('#d946ef')" class="accent-color-btn w-7 h-7 rounded-full bg-[#d946ef] ring-2 ring-transparent hover:ring-white/30 hover:scale-110 transition-transform shadow-md" title="Пурпурный"></button>
+              <button type="button" onclick="setAccentColor('#94a3b8')" class="accent-color-btn w-7 h-7 rounded-full bg-[#94a3b8] ring-2 ring-transparent hover:ring-white/30 hover:scale-110 transition-transform shadow-md" title="Монохром"></button>
+              
+              <!-- Custom color picker -->
+              <label class="w-7 h-7 rounded-full overflow-hidden cursor-pointer ring-2 ring-transparent hover:ring-white/30 hover:scale-110 transition-transform flex items-center justify-center bg-gradient-to-tr from-pink-500 via-purple-500 to-indigo-500 shadow-md" title="Выбрать свой цвет">
+                <input type="color" id="settingsCustomColorPicker" oninput="setAccentColor(this.value, false)" onchange="setAccentColor(this.value)" class="opacity-0 w-0 h-0 cursor-pointer">
+                <i class="fa-solid fa-eye-dropper text-[10px] text-white"></i>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Interface Language -->
+        <div id="sectionSettingsLang" class="p-4 rounded-2xl bg-[#161a26] border border-white/5 space-y-2.5 transition-all duration-300">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-white flex items-center gap-1.5">
+              <i class="fa-solid fa-language text-indigo-400 text-sm"></i>
+              <span data-i18n="settingsLanguageTitle">Язык интерфейса</span>
+            </span>
+            <span id="currentLangTag" class="text-[10px] text-indigo-400 font-mono font-bold bg-indigo-500/10 px-2 py-0.5 rounded-full border border-indigo-500/20">RU</span>
+          </div>
+          <p class="text-[11px] text-slate-400" data-i18n="settingsLanguageDesc">
+            Выберите язык оформления элементов интерфейса, кнопок и подсказок
+          </p>
+          <div class="grid grid-cols-2 gap-2.5 pt-1">
+            <button type="button" id="langBtnRu" onclick="changeAppLanguage('ru')" class="p-2.5 rounded-xl bg-indigo-600 text-white font-semibold flex items-center justify-center gap-2 border border-indigo-500/40 shadow-sm transition-all">
+              <span class="px-1.5 py-0.5 rounded bg-white/20 font-mono font-bold text-[10px]">RU</span>
+              <span>Русский</span>
+            </button>
+            <button type="button" id="langBtnEn" onclick="changeAppLanguage('en')" class="p-2.5 rounded-xl bg-[#12151e] hover:bg-slate-800 text-slate-300 hover:text-white font-semibold flex items-center justify-center gap-2 border border-white/5 transition-all">
+              <span class="px-1.5 py-0.5 rounded bg-white/10 font-mono font-bold text-[10px]">EN</span>
+              <span>English</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Updates & Maintenance -->
+        <div id="sectionSettingsUpdates" class="p-4 rounded-2xl bg-[#161a26] border border-white/5 space-y-3 transition-all duration-300">
+          <span class="font-bold text-white flex items-center gap-1.5">
+            <i class="fa-solid fa-wrench text-indigo-400 text-xs"></i>
+            <span data-i18n="settingsMaintenanceTitle">Обслуживание и обновления</span>
+          </span>
+          <div class="flex flex-col sm:flex-row gap-2">
+            <button id="settingsCheckUpdatesBtn" onclick="checkAppUpdatesFromSettings()" class="flex-1 px-3 py-2 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 hover:text-white font-semibold border border-indigo-500/30 transition-all flex items-center justify-center gap-1.5">
+              <i class="fa-solid fa-arrows-rotate text-[11px]"></i>
+              <span data-i18n="checkUpdatesBtn">Проверить обновления</span>
+            </button>
+            <button onclick="clearModCache()" class="flex-1 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white font-semibold border border-white/5 transition-all flex items-center justify-center gap-1.5">
+              <i class="fa-solid fa-trash-can text-[11px] text-slate-400"></i>
+              <span data-i18n="clearCacheBtn">Очистить кэш модов</span>
+            </button>
+          </div>
+          <!-- Status container for update checks inside settings -->
+          <div id="settingsUpdateStatus" class="hidden text-[11px] p-2.5 rounded-xl border"></div>
+        </div>
+
+      </div>
+
+      <!-- Footer Buttons -->
+      <div class="p-4 bg-[#10131c] border-t border-white/5 flex items-center justify-between text-xs">
+        <button onclick="closeSettingsModal()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold transition-all">
+          <span data-i18n="cancelBtn">Отмена</span>
+        </button>
+        <button onclick="saveSettings()" class="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold shadow-md shadow-indigo-600/20 transition-all flex items-center space-x-1.5">
+          <i class="fa-solid fa-check text-[11px]"></i>
+          <span data-i18n="saveSettingsBtn">Сохранить настройки</span>
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- MODAL: Personal Account (Steam Link / Profile) -->
+  <div id="accountModal" class="fixed inset-0 z-50 modal-overlay hidden flex items-center justify-center p-4" onclick="if(event.target === this) closeAccountModal()">
+    <div class="panel-dark w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl border border-white/10 flex flex-col relative bg-[#12151e]">
+      
+      <!-- Dynamic Views Container (Create Form vs Profile View) -->
+      <div id="accountModalContent">
+        <!-- Rendered via JS in app.js -->
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Floating Scroll To Top Button -->
+  <button 
+    id="scrollToTopBtn" 
+    onclick="window.scrollTo({ top: 0, behavior: 'smooth' })" 
+    class="fixed bottom-6 right-6 z-40 w-11 h-11 rounded-2xl bg-indigo-600/90 hover:bg-indigo-500 text-white shadow-xl shadow-indigo-600/30 border border-white/10 flex items-center justify-center transition-all duration-300 opacity-0 translate-y-4 pointer-events-none hover:scale-105 active:scale-95 group" 
+    title="Наверх"
+  >
+    <i class="fa-solid fa-arrow-up text-sm transition-transform duration-200 group-hover:-translate-y-0.5"></i>
+  </button>
+
+  <!-- Toast Notification Container (Sleek non-blocking toasts, no alerts) -->
+  <div id="toastContainer" class="fixed bottom-20 right-6 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

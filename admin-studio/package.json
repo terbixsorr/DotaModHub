@@ -1,0 +1,18 @@
+{
+  "name": "dotamod-studio",
+  "version": "1.0.0",
+  "description": "DotaMod Studio — Автоматический мониторинг, парсинг и управление каталогом модов Dota 2",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "keywords": [
+    "dota2",
+    "mods",
+    "catalog",
+    "admin",
+    "studio"
+  ],
+  "author": "DotaMod Team",
+  "license": "MIT"
+}

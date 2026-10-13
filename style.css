@@ -1,0 +1,650 @@
+/* DotaMod Hub — Streamlined Dark Theme v2 */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Rajdhani:wght@600;700&display=swap');
+
+:root {
+  --bg-main: #0c0e14;
+  --bg-surface: #131620;
+  --bg-card: #161a26;
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-hover: rgba(99, 102, 241, 0.35);
+  --accent-blue: #6366f1;
+  --accent-glow: rgba(99, 102, 241, 0.3);
+  --text-muted: #94a3b8;
+  --radius-soft: 16px;
+  --radius-card: 20px;
+}
+
+/* Glass Blend Mode (Сливаться с фоном) */
+body.blend-glass-mode {
+  --bg-main: transparent;
+  background-color: transparent !important;
+}
+
+body.blend-glass-mode header {
+  background-color: rgba(13, 16, 23, 0.6) !important;
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+body.blend-glass-mode .sidebar-panel,
+body.blend-glass-mode .panel-dark,
+body.blend-glass-mode .mod-card,
+body.blend-glass-mode section,
+body.blend-glass-mode .recent-card,
+body.blend-glass-mode .bg-card {
+  background-color: rgba(18, 22, 34, 0.55) !important;
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
+body.blend-glass-mode .mod-card:hover {
+  background-color: rgba(25, 30, 48, 0.72) !important;
+  border-color: var(--accent-blue, #6366f1) !important;
+  box-shadow: 0 16px 36px -10px rgba(0, 0, 0, 0.65), 0 0 24px -2px var(--accent-glow, rgba(99, 102, 241, 0.3)) !important;
+}
+
+body.blend-glass-mode #customBgOverlay {
+  background-color: rgba(12, 14, 20, 0.45) !important;
+}
+
+body.blend-glass-mode footer {
+  background-color: rgba(9, 11, 15, 0.6) !important;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background-color: var(--bg-main);
+  color: #e2e8f0;
+  overflow-x: hidden;
+}
+
+.brand-font {
+  font-family: 'Rajdhani', sans-serif;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #242a38;
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Clean Panels & Cards */
+.panel-dark {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+}
+
+.mod-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-card);
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.28s ease, box-shadow 0.28s ease;
+  will-change: transform;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 340px;
+}
+
+.mod-card:hover {
+  transform: translateY(-5px);
+  border-color: var(--border-hover);
+  box-shadow: 0 16px 36px -10px rgba(0, 0, 0, 0.65), 0 0 24px -2px rgba(99, 102, 241, 0.22);
+}
+
+.mod-card:hover .card-preview-img {
+  transform: scale(1.05);
+}
+
+.card-preview-img {
+  transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Recent Cards — Enhanced & Prominent */
+.recent-card {
+  background: rgba(20, 24, 38, 0.85);
+  border: 1px solid rgba(99, 102, 241, 0.18);
+  border-radius: 18px;
+  backdrop-filter: blur(8px);
+  transition: all 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  position: relative;
+  overflow: hidden;
+}
+.recent-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.6), transparent);
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+.recent-card:hover {
+  border-color: rgba(99, 102, 241, 0.5);
+  transform: translateY(-3px);
+  background: rgba(26, 31, 48, 0.95);
+  box-shadow: 0 10px 25px -5px rgba(99, 102, 241, 0.18), 0 0 15px -3px rgba(99, 102, 241, 0.15);
+}
+.recent-card:hover::before {
+  opacity: 1;
+}
+
+/* Hero & Item Avatar Pills (Sidebar Vertical) */
+.hero-pill, .item-pill {
+  transition: all 0.15s ease;
+  border: 1px solid transparent;
+  background: transparent;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.hero-pill:hover, .item-pill:hover {
+  border-color: rgba(99, 102, 241, 0.25);
+  background: rgba(255, 255, 255, 0.04);
+  color: #ffffff;
+}
+
+.hero-pill.active, .item-pill.active {
+  border-color: rgba(99, 102, 241, 0.45) !important;
+  background: rgba(99, 102, 241, 0.15) !important;
+  color: #ffffff !important;
+  font-weight: 600;
+}
+
+/* Hero Card Tile (Grid View) */
+.hero-card-tile {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-card);
+  transition: all 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-card-tile::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at top right, rgba(99, 102, 241, 0.08), transparent 70%);
+  pointer-events: none;
+}
+
+.hero-card-tile:hover {
+  transform: translateY(-4px);
+  border-color: rgba(99, 102, 241, 0.4);
+  background: #191d2c;
+  box-shadow: 0 12px 30px -10px rgba(0, 0, 0, 0.6), 0 0 15px -3px rgba(99, 102, 241, 0.15);
+}
+
+.hero-card-tile:hover .hero-card-avatar {
+  transform: scale(1.06);
+  border-color: rgba(99, 102, 241, 0.5);
+}
+
+.hero-card-avatar {
+  transition: all 0.25s ease;
+  aspect-ratio: 16 / 9;
+  width: 60px !important;
+  height: 38px !important;
+  background: #0c0e14;
+}
+
+.hero-card-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 20%;
+}
+
+/* Sidebar Desktop & Sticky Panel */
+.sidebar-desktop {
+  position: -webkit-sticky;
+  position: sticky;
+  top: 76px;
+  align-self: flex-start;
+  z-index: 30;
+}
+
+.sidebar-panel {
+  transition: all 0.25s ease;
+  max-height: calc(100vh - 95px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(99, 102, 241, 0.3) transparent;
+}
+
+.sidebar-panel::-webkit-scrollbar {
+  width: 4px;
+}
+.sidebar-panel::-webkit-scrollbar-thumb {
+  background: rgba(99, 102, 241, 0.3);
+  border-radius: 9999px;
+}
+.sidebar-panel::-webkit-scrollbar-thumb:hover {
+  background: rgba(99, 102, 241, 0.6);
+}
+
+/* Sidebar Category Buttons */
+.sidebar-cat-btn.active-cat {
+  background: rgba(99, 102, 241, 0.15) !important;
+  color: #a5b4fc !important;
+  border: 1px solid rgba(99, 102, 241, 0.25) !important;
+}
+
+/* Modal Backdrop & Animations */
+.modal-overlay.hidden,
+.modal-overlay[hidden] {
+  display: none !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+}
+
+.modal-overlay {
+  background-color: rgba(6, 8, 12, 0.88);
+  backdrop-filter: blur(14px);
+}
+
+@keyframes modalBackdropIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes modalContentIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.modal-overlay:not(.hidden) {
+  display: flex !important;
+  pointer-events: auto !important;
+  visibility: visible !important;
+  animation: modalBackdropIn 0.22s ease-out forwards;
+}
+
+.modal-overlay:not(.hidden) > div {
+  animation: modalContentIn 0.26s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity;
+}
+
+/* Sidebar Visibility (Left Taskbar / Filters) */
+.sidebar-desktop {
+  display: block !important;
+}
+
+@media (max-width: 900px) {
+  .sidebar-desktop {
+    display: none !important;
+  }
+}
+
+@media (min-width: 901px) {
+  #mobileFilterBar {
+    display: none !important;
+  }
+}
+
+.card-img-wrapper {
+  border-radius: var(--radius-card) var(--radius-card) 0 0;
+  overflow: hidden;
+  background: linear-gradient(90deg, #11141e 0%, #1c2233 50%, #11141e 100%);
+  background-size: 200% 100%;
+  animation: shimmerBg 2.5s infinite linear;
+}
+
+@keyframes shimmerBg {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.card-img-wrapper::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(22, 26, 38, 0.95) 0%, rgba(22, 26, 38, 0.15) 50%, transparent 80%);
+  pointer-events: none;
+}
+
+/* Hero group header */
+.hero-group-header {
+  border-radius: var(--radius-soft);
+}
+
+/* Smooth transitions for all interactive elements */
+button, a, select, input {
+  transition: all 0.2s ease;
+}
+
+/* Mobile filter bar */
+@media (max-width: 1023px) {
+  #mobileFilterBar {
+    position: sticky;
+    top: 70px;
+    z-index: 30;
+  }
+}
+
+/* Soundboard & Voice Preview Player */
+.sound-btn {
+  background: rgba(22, 26, 38, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 6px 9px;
+  font-size: 11px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  color: #cbd5e1;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+.sound-btn:hover {
+  background: rgba(99, 102, 241, 0.18);
+  border-color: rgba(99, 102, 241, 0.4);
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+.sound-btn.playing {
+  background: rgba(99, 102, 241, 0.3) !important;
+  border-color: #6366f1 !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 14px rgba(99, 102, 241, 0.45);
+}
+
+@keyframes soundPulse {
+  0% { transform: scale(1); }
+  100% { transform: scale(1.3); }
+}
+
+@keyframes eqAnim {
+  0% { height: 3px; }
+  50% { height: 14px; }
+  100% { height: 5px; }
+}
+.audio-playing .eq-bar:nth-child(1) { animation: eqAnim 0.35s infinite ease-in-out; }
+.audio-playing .eq-bar:nth-child(2) { animation: eqAnim 0.5s infinite ease-in-out 0.1s; }
+.audio-playing .eq-bar:nth-child(3) { animation: eqAnim 0.42s infinite ease-in-out 0.15s; }
+.audio-playing .eq-bar:nth-child(4) { animation: eqAnim 0.6s infinite ease-in-out 0.05s; }
+.audio-playing .eq-bar:nth-child(5) { animation: eqAnim 0.38s infinite ease-in-out 0.2s; }
+
+/* Image Lightbox Modal */
+#imageLightboxModal {
+  background-color: rgba(4, 6, 10, 0.92);
+  backdrop-filter: blur(14px);
+}
+#imageLightboxImg {
+  transition: transform 0.25s cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* Custom Background Styles */
+#customBgContainer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  overflow: hidden;
+}
+#customBgImage {
+  position: absolute;
+  inset: -15px;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  transition: background-image 0.6s ease, filter 0.3s ease;
+}
+#customBgOverlay {
+  position: absolute;
+  inset: 0;
+  background-color: #0c0e14;
+  transition: opacity 0.3s ease;
+}
+
+/* Background Preset Card in #bgModal */
+.bg-preset-card {
+  position: relative;
+  height: 90px;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  background-size: cover;
+  background-position: center;
+  transition: all 0.25s ease;
+}
+.bg-preset-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(12, 14, 20, 0.95) 0%, rgba(12, 14, 20, 0.2) 60%, transparent 100%);
+  transition: opacity 0.2s ease;
+}
+.bg-preset-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(99, 102, 241, 0.6);
+  box-shadow: 0 6px 20px -3px rgba(99, 102, 241, 0.3);
+}
+.bg-preset-card.active {
+  border-color: #6366f1 !important;
+  box-shadow: 0 0 0 2px #6366f1, 0 8px 24px -4px rgba(99, 102, 241, 0.5) !important;
+}
+.bg-preset-card .preset-label {
+  position: absolute;
+  bottom: 6px;
+  left: 8px;
+  right: 8px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #ffffff;
+  z-index: 10;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.bg-preset-card .preset-type-badge {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  z-index: 10;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3.5px;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+.bg-preset-card .preset-type-badge.video {
+  background: rgba(225, 29, 72, 0.85);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+.bg-preset-card .preset-type-badge.image {
+  background: rgba(15, 23, 42, 0.85);
+  color: #93c5fd;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+}
+/* Installed Mod Cards on My Mods Page */
+.installed-mod-card {
+  transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease, opacity 0.25s ease;
+}
+.installed-mod-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 30px -8px rgba(0, 0, 0, 0.6);
+}
+
+/* List View Rows (Heroes, Items, and Mods) */
+.hero-list-row, .mod-list-row {
+  transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+.hero-list-row:hover, .mod-list-row:hover {
+  transform: translateX(4px);
+  border-color: rgba(99, 102, 241, 0.35);
+  box-shadow: 0 8px 24px -6px rgba(0, 0, 0, 0.5);
+}
+
+/* Avatar Choice Buttons in Account Creation */
+.avatar-choice-btn {
+  transition: all 0.2s ease;
+  position: relative;
+}
+.avatar-choice-btn:hover {
+  transform: scale(1.08);
+  border-color: rgba(99, 102, 241, 0.8);
+}
+.avatar-choice-btn.active {
+  border-color: #6366f1 !important;
+  box-shadow: 0 0 0 2px #6366f1, 0 6px 16px -2px rgba(99, 102, 241, 0.5) !important;
+}
+
+/* Pulsing Badge & Notification Highlights */
+@keyframes pulseGlow {
+  0%, 100% { opacity: 0.9; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.05); }
+}
+.pulse-glow {
+  animation: pulseGlow 2.5s infinite ease-in-out;
+}
+
+/* Card Entrance Animations (Staggered Cascading Reveal) */
+@keyframes cardEntrance {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.mod-card, .hero-card-tile, .installed-mod-card {
+  animation: cardEntrance 0.32s cubic-bezier(0.16, 1, 0.3, 1) both;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 340px;
+  will-change: transform;
+}
+
+.hero-card-tile {
+  contain-intrinsic-size: auto 130px;
+}
+
+.mod-list-row, .hero-list-row {
+  animation: cardEntrance 0.24s cubic-bezier(0.16, 1, 0.3, 1) both;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 65px;
+  will-change: transform;
+}
+
+/* Stagger entrance delays for the first 16 cards */
+.mod-card:nth-child(1), .hero-card-tile:nth-child(1) { animation-delay: 0.015s; }
+.mod-card:nth-child(2), .hero-card-tile:nth-child(2) { animation-delay: 0.030s; }
+.mod-card:nth-child(3), .hero-card-tile:nth-child(3) { animation-delay: 0.045s; }
+.mod-card:nth-child(4), .hero-card-tile:nth-child(4) { animation-delay: 0.060s; }
+.mod-card:nth-child(5), .hero-card-tile:nth-child(5) { animation-delay: 0.075s; }
+.mod-card:nth-child(6), .hero-card-tile:nth-child(6) { animation-delay: 0.090s; }
+.mod-card:nth-child(7), .hero-card-tile:nth-child(7) { animation-delay: 0.105s; }
+.mod-card:nth-child(8), .hero-card-tile:nth-child(8) { animation-delay: 0.120s; }
+.mod-card:nth-child(9), .hero-card-tile:nth-child(9) { animation-delay: 0.135s; }
+.mod-card:nth-child(10), .hero-card-tile:nth-child(10) { animation-delay: 0.150s; }
+.mod-card:nth-child(11), .hero-card-tile:nth-child(11) { animation-delay: 0.165s; }
+.mod-card:nth-child(12), .hero-card-tile:nth-child(12) { animation-delay: 0.180s; }
+.mod-card:nth-child(13), .hero-card-tile:nth-child(13) { animation-delay: 0.195s; }
+.mod-card:nth-child(14), .hero-card-tile:nth-child(14) { animation-delay: 0.210s; }
+.mod-card:nth-child(15), .hero-card-tile:nth-child(15) { animation-delay: 0.225s; }
+.mod-card:nth-child(16), .hero-card-tile:nth-child(16) { animation-delay: 0.240s; }
+
+/* Page View Transitions */
+@keyframes pageFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.page-fade-enter {
+  animation: pageFadeIn 0.26s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: opacity, transform;
+}
+
+/* Button Shimmer Flash Micro-interaction */
+.btn-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+.btn-shimmer::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(60deg, transparent, rgba(255, 255, 255, 0.15), transparent);
+  transform: rotate(30deg) translateY(-100%);
+  transition: transform 0.65s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+}
+.btn-shimmer:hover::after {
+  transform: rotate(30deg) translateY(100%);
+}
+
+/* Glowing Search Input Focus */
+#searchInput:focus, #mobileSearchInput:focus {
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25), 0 8px 24px -4px rgba(99, 102, 241, 0.2);
+  border-color: rgba(99, 102, 241, 0.6);
+}
+
+/* Smooth GPU-accelerated Interactive Elements */
+button:active {
+  transform: scale(0.96);
+}
+
+/* Prevent search clear buttons from flying downwards on active/click */
+#clearSearchBtn:active,
+#clearMobileSearchBtn:active {
+  transform: translateY(-50%) scale(0.92) !important;
+}
+
+
