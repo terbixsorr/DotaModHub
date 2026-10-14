@@ -5677,10 +5677,18 @@ window.initUpdateNotification = async function() {
   const banner = document.getElementById('updateNotificationBanner');
   const currentVer = window.getAppVersion();
 
-  // Always keep update button accessible and visible in header
+  // Button is hidden by default and only appears when an update is actually available
   if (btn) {
-    btn.classList.remove('hidden');
-    btn.style.display = 'flex';
+    btn.classList.add('hidden');
+    btn.style.display = 'none';
+  }
+  if (badge) {
+    badge.classList.add('hidden');
+    badge.style.display = 'none';
+  }
+  if (banner) {
+    banner.classList.add('hidden');
+    banner.style.display = 'none';
   }
 
   if (!window.dotaManager || typeof window.dotaManager.checkUpdate !== 'function') {
@@ -5704,6 +5712,8 @@ window.initUpdateNotification = async function() {
 
     if (hasNewerVersion) {
       if (btn) {
+        btn.classList.remove('hidden');
+        btn.style.display = 'flex';
         btn.classList.add('border-indigo-500/50', 'bg-indigo-600/25', 'text-indigo-200', 'ring-2', 'ring-indigo-500/30');
         btn.title = `Доступно обновление v${res.version}! Нажмите для установки.`;
       }
@@ -5749,10 +5759,11 @@ window.initUpdateNotification = async function() {
       }
       return;
     } else {
-      // Local version is latest release
+      // Local version is up-to-date: Keep update button and banners hidden
       if (btn) {
+        btn.classList.add('hidden');
+        btn.style.display = 'none';
         btn.classList.remove('border-indigo-500/50', 'bg-indigo-600/25', 'ring-2', 'ring-indigo-500/30');
-        btn.title = `DotaMod Hub v${currentVer} (Актуальная версия)`;
       }
       if (badge) {
         badge.classList.add('hidden');
@@ -5766,10 +5777,11 @@ window.initUpdateNotification = async function() {
     }
   }
 
-  // Check finished without pending updates or offline
+  // Check finished without pending updates or offline: Keep update button hidden
   if (btn) {
+    btn.classList.add('hidden');
+    btn.style.display = 'none';
     btn.classList.remove('border-indigo-500/50', 'bg-indigo-600/25', 'ring-2', 'ring-indigo-500/30');
-    btn.title = `DotaMod Hub v${currentVer} (Центр обновлений)`;
   }
   if (badge) {
     badge.classList.add('hidden');
@@ -5823,8 +5835,14 @@ window.checkAppUpdates = async function(manual = false) {
 
     window._availableUpdate = res; // Always save release info!
     const hasNewer = compareVersions(res.version, currentVer) > 0;
+    const headerBtn = document.getElementById('headerUpdateBtn');
 
     if (hasNewer) {
+      if (headerBtn) {
+        headerBtn.classList.remove('hidden');
+        headerBtn.style.display = 'flex';
+        headerBtn.classList.add('border-indigo-500/50', 'bg-indigo-600/25', 'text-indigo-200', 'ring-2', 'ring-indigo-500/30');
+      }
       const banner = document.getElementById('updateNotificationBanner');
       if (banner) {
         banner.classList.remove('hidden');
@@ -5833,6 +5851,10 @@ window.checkAppUpdates = async function(manual = false) {
         banner.style.transform = 'translateY(0)';
       }
     } else {
+      if (headerBtn) {
+        headerBtn.classList.add('hidden');
+        headerBtn.style.display = 'none';
+      }
       const banner = document.getElementById('updateNotificationBanner');
       if (banner) { banner.classList.add('hidden'); banner.style.display = 'none'; }
     }
@@ -5908,21 +5930,20 @@ window.openUpdateModal = async function() {
       changelogList.innerHTML = renderReleaseNotes(updateData.notes);
     }
   } else if (isUpToDate) {
-    // Up-to-date with GitHub release: ALWAYS KEEP BUTTON VISIBLE for reinstall / test
-    const sizeStr = updateData.assetSize ? ` (${formatBytes(updateData.assetSize)})` : '';
+    // Current version is latest
     if (applyBtn) {
       applyBtn.style.display = 'flex';
-      applyBtn.disabled = false;
-      applyBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-      applyBtn.className = 'px-5 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-bold shadow-md shadow-indigo-600/25 transition-all flex items-center space-x-1.5';
-      applyBtn.innerHTML = `<i class="fa-solid fa-arrows-rotate text-[11px]"></i> <span>${isEn ? `Reinstall / Download v${updateData.version}${sizeStr}` : `Переустановить / Скачать v${updateData.version}${sizeStr}`}</span>`;
-      applyBtn.onclick = () => window.applyAppUpdate();
+      applyBtn.disabled = true;
+      applyBtn.className = 'px-5 py-2 rounded-xl bg-emerald-600/15 border border-emerald-500/30 text-emerald-300 font-semibold transition-all flex items-center space-x-1.5 cursor-default select-none';
+      applyBtn.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-400 text-xs"></i> <span>${isEn ? 'Latest Version Installed' : 'Установлена последняя версия'}</span>`;
+      applyBtn.onclick = null;
     }
     if (dismissBtn) {
-      dismissBtn.innerHTML = `<i class="fa-solid fa-check text-[11px]"></i> <span>${isEn ? 'Close' : 'Закрыть'}</span>`;
+      dismissBtn.className = 'px-5 py-2 rounded-xl bg-[#161a26] hover:bg-[#1f2436] text-white text-xs font-semibold border border-white/10 transition-all flex items-center space-x-1.5';
+      dismissBtn.innerHTML = `<i class="fa-solid fa-check text-[11px] text-emerald-400"></i> <span>${isEn ? 'Close' : 'Закрыть'}</span>`;
     }
     if (targetBadge) {
-      targetBadge.className = 'px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 text-[10px] font-bold border border-indigo-500/30';
+      targetBadge.className = 'px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-bold border border-emerald-500/30';
       targetBadge.textContent = isEn ? `v${currentVer} (Latest)` : `v${currentVer} (Актуальная)`;
     }
     if (changelogTitle) {

@@ -175,6 +175,15 @@ namespace DotaModHubLauncher {
                                 }
                             }
 
+                            splash.SetStatus("Ожидание завершения предыдущего процесса...");
+                            for (int r = 0; r < 25; r++) {
+                                try {
+                                    Process[] procs = Process.GetProcessesByName("DotaModHub");
+                                    if (procs.Length == 0) break;
+                                } catch {}
+                                Thread.Sleep(200);
+                            }
+
                             splash.SetStatus("Установка компонентов...");
                             using (ZipArchive archive = ZipFile.OpenRead(tempZip)) {
                                 foreach (ZipArchiveEntry entry in archive.Entries) {
@@ -187,7 +196,18 @@ namespace DotaModHubLauncher {
                                     string destPath = Path.Combine(appDir, entry.FullName);
                                     string destDir = Path.GetDirectoryName(destPath);
                                     if (!Directory.Exists(destDir)) Directory.CreateDirectory(destDir);
-                                    entry.ExtractToFile(destPath, true);
+                                    
+                                    int retries = 0;
+                                    while (true) {
+                                        try {
+                                            entry.ExtractToFile(destPath, true);
+                                            break;
+                                        } catch (IOException) {
+                                            retries++;
+                                            if (retries >= 10) throw;
+                                            Thread.Sleep(250);
+                                        }
+                                    }
                                 }
                             }
                             File.WriteAllText(markerFile, DateTime.UtcNow.ToString("o"));

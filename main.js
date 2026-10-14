@@ -1808,7 +1808,7 @@ ipcMain.handle('update:install', async (event, installerPath) => {
 
   try {
     const { spawn } = require('child_process');
-    const child = spawn(installerPath, [], {
+    const child = spawn(installerPath, ['--force', '--update'], {
       detached: true,
       stdio: 'ignore'
     });

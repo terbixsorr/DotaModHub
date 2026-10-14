@@ -1,0 +1,22 @@
+{
+  "name": "dotamod-desktop",
+  "version": "1.5.0",
+  "description": "DotaMod Hub - Modern Desktop Client (Electron Prototype)",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder"
+  },
+  "keywords": [
+    "dota2",
+    "mods",
+    "desktop",
+    "electron"
+  ],
+  "author": "DotaMod Hub",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^28.3.3",
+    "electron-packager": "^17.1.2"
+  }
+}
