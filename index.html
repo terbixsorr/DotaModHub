@@ -96,6 +96,13 @@
           <span class="inline font-medium" data-i18n="settingsBtn">Настройки</span>
         </button>
 
+        <!-- Dynamic Header Update Button (Visible when update is available or for manual check) -->
+        <button id="headerUpdateBtn" onclick="checkAppUpdates(true)" class="hidden px-3.5 py-2.5 rounded-2xl bg-[#161a26] hover:bg-[#1f2436] text-slate-300 hover:text-white text-xs font-medium border border-white/5 items-center space-x-1.5 transition-all hover:border-white/15" title="Проверить обновления">
+          <i class="fa-solid fa-arrows-rotate text-indigo-400 text-xs"></i>
+          <span class="hidden xl:inline">Обновление</span>
+          <span id="headerUpdateBadge" class="hidden px-1.5 py-0.5 rounded-full bg-indigo-500 text-white text-[10px] font-bold">NEW</span>
+        </button>
+
         <div class="h-6 w-px bg-white/10 hidden sm:block"></div>
 
         <!-- Steam Account Widget -->
@@ -134,7 +141,7 @@
     <div id="catalogPageView">
 
       <!-- Update Notification Banner (Optimized release notification) -->
-      <div id="updateNotificationBanner" class="mb-5 rounded-3xl p-4 sm:p-5 bg-gradient-to-r from-indigo-950/80 via-[#151928] to-[#1e1738] border border-indigo-500/35 shadow-xl shadow-indigo-950/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative overflow-hidden transition-all duration-300">
+      <div id="updateNotificationBanner" class="hidden mb-5 rounded-3xl p-4 sm:p-5 bg-gradient-to-r from-indigo-950/80 via-[#151928] to-[#1e1738] border border-indigo-500/35 shadow-xl shadow-indigo-950/30 flex-col sm:flex-row sm:items-center justify-between gap-4 relative overflow-hidden transition-all duration-300" style="display: none;">
         <div class="absolute -right-12 -bottom-12 w-44 h-44 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none"></div>
         <div class="flex items-start sm:items-center space-x-3.5 relative z-10">
           <div class="w-11 h-11 rounded-2xl bg-indigo-600/20 border border-indigo-500/40 flex items-center justify-center text-indigo-400 shrink-0 shadow-inner">

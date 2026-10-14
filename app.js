@@ -5676,6 +5676,7 @@ window.initUpdateNotification = async function() {
   const badge = document.getElementById('headerUpdateBadge');
   const currentVer = window.getAppVersion();
 
+  // Always keep update button accessible in header
   if (btn) {
     btn.classList.remove('hidden');
     btn.style.display = 'flex';
@@ -5687,7 +5688,7 @@ window.initUpdateNotification = async function() {
       window._availableUpdate = res;
 
       if (btn) {
-        btn.classList.add('border-indigo-500/50', 'bg-indigo-600/20', 'text-indigo-200', 'ring-2', 'ring-indigo-500/30');
+        btn.classList.add('border-indigo-500/50', 'bg-indigo-600/25', 'text-indigo-200', 'ring-2', 'ring-indigo-500/30');
         btn.title = `Доступно обновление v${res.version}! Нажмите для установки.`;
       }
       if (badge) {
@@ -5734,11 +5735,11 @@ window.initUpdateNotification = async function() {
     }
   }
 
-  // No newer version or error
+  // No newer version or check finished without pending updates
   window._availableUpdate = null;
   if (btn) {
-    btn.classList.remove('border-indigo-500/50', 'bg-indigo-600/20', 'text-indigo-200', 'ring-2', 'ring-indigo-500/30');
-    btn.title = `DotaMod Hub v${currentVer} (Обновлений не требуется)`;
+    btn.classList.remove('border-indigo-500/50', 'bg-indigo-600/25', 'ring-2', 'ring-indigo-500/30');
+    btn.title = `DotaMod Hub v${currentVer} (Проверить обновления)`;
   }
   if (badge) {
     badge.classList.add('hidden');
