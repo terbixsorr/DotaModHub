@@ -22,6 +22,14 @@ contextBridge.exposeInMainWorld('dotaManager', {
   setDiscordEnabled: (options) => ipcRenderer.invoke('discord:set-enabled', options),
   getDiscordStatus: () => ipcRenderer.invoke('discord:get-status'),
   openExternal: (url) => ipcRenderer.invoke('app:open-external', url),
+  checkUpdate: () => ipcRenderer.invoke('update:check'),
+  downloadUpdate: (downloadUrl) => ipcRenderer.invoke('update:download', downloadUrl),
+  installUpdate: (installerPath) => ipcRenderer.invoke('update:install', installerPath),
+  onUpdateDownloadProgress: (callback) => {
+    ipcRenderer.on('update:download-progress', (event, data) => {
+      if (typeof callback === 'function') callback(data);
+    });
+  },
   onNavigateBack: (callback) => {
     ipcRenderer.on('app:navigate-back', () => {
       if (typeof callback === 'function') callback();

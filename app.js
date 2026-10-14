@@ -5580,10 +5580,11 @@ window.refreshInstalledModsBadge = async function(count = null) {
 };
 
 // ==========================================
-// UPDATE NOTIFICATION SYSTEM (v1.7.0 Background WebM Fix & VAC Safety Release)
+// REAL AUTO-UPDATER SYSTEM (GitHub Releases Integration)
 // ==========================================
-const TARGET_UPDATE_VERSION = '1.7.0';
 const DEFAULT_INITIAL_VERSION = '1.5.0';
+window._availableUpdate = null;
+window._updateCheckPromise = null;
 
 window.getAppVersion = function() {
   try {
@@ -5593,78 +5594,11 @@ window.getAppVersion = function() {
   }
 };
 
-window.initUpdateNotification = function() {
-  const banner = document.getElementById('updateNotificationBanner');
-  const btn = document.getElementById('headerUpdateBtn');
-  const badge = document.getElementById('headerUpdateBadge');
-  const currentVer = window.getAppVersion();
-
-  const hasNewerVersion = compareVersions(TARGET_UPDATE_VERSION, currentVer) > 0;
-
-  if (btn) {
-    btn.classList.remove('hidden');
-    btn.style.display = 'flex';
-  }
-
-  // Clear legacy snoozes from older versions so user definitely sees v1.7.0
-  const snoozedVer = localStorage.getItem('dotamod_snoozed_version');
-  if (snoozedVer && snoozedVer !== TARGET_UPDATE_VERSION) {
-    localStorage.removeItem('dotamod_update_snooze');
-    localStorage.removeItem('dotamod_snoozed_version');
-  }
-
-  if (hasNewerVersion) {
-    if (btn) {
-      btn.classList.add('border-indigo-500/50', 'bg-indigo-600/20', 'text-indigo-200', 'ring-2', 'ring-indigo-500/30');
-      btn.title = `Доступно обновление v${TARGET_UPDATE_VERSION}! Нажмите для установки.`;
-    }
-    if (badge) {
-      badge.textContent = `v${TARGET_UPDATE_VERSION}`;
-      badge.classList.remove('hidden');
-      badge.style.display = 'inline-block';
-    }
-
-    const snoozeTime = localStorage.getItem('dotamod_update_snooze');
-    const currentSnoozedVer = localStorage.getItem('dotamod_snoozed_version');
-    
-    // Only snooze banner if snoozed specifically for TARGET_UPDATE_VERSION in the last 24 hours
-    if (snoozeTime && currentSnoozedVer === TARGET_UPDATE_VERSION) {
-      const hoursPassed = (Date.now() - parseInt(snoozeTime, 10)) / (1000 * 60 * 60);
-      if (hoursPassed < 24) {
-        if (banner) { banner.classList.add('hidden'); banner.style.display = 'none'; }
-        return;
-      }
-    }
-
-    if (banner) {
-      banner.classList.remove('hidden');
-      banner.style.display = 'flex';
-      banner.style.opacity = '1';
-      banner.style.transform = 'translateY(0)';
-    }
-
-    // High-visibility startup alert toast
-    if (!window._updateToastShown) {
-      window._updateToastShown = true;
-      setTimeout(() => {
-        showToast(`🔥 Доступно обновление DotaMod Hub v${TARGET_UPDATE_VERSION}! Исправление фонов меню игры и защита VAC.`, 'info', 7000);
-      }, 1200);
-    }
-  } else {
-    if (btn) {
-      btn.classList.remove('border-indigo-500/50', 'bg-indigo-600/20', 'text-indigo-200', 'ring-2', 'ring-indigo-500/30');
-      btn.title = `DotaMod Hub v${currentVer} (Обновлений не требуется)`;
-    }
-    if (badge) {
-      badge.classList.add('hidden');
-      badge.style.display = 'none';
-    }
-    if (banner) {
-      banner.classList.add('hidden');
-      banner.style.display = 'none';
-    }
-  }
-};
+function formatBytes(bytes) {
+  if (!bytes || bytes <= 0) return '0 MB';
+  const mb = bytes / (1024 * 1024);
+  return `${mb.toFixed(1)} MB`;
+}
 
 function compareVersions(v1, v2) {
   const p1 = (v1 || '').replace(/^v/, '').split('.').map(n => parseInt(n, 10) || 0);
@@ -5678,6 +5612,144 @@ function compareVersions(v1, v2) {
   return 0;
 }
 
+function renderReleaseNotes(notes) {
+  if (!notes || typeof notes !== 'string' || !notes.trim()) {
+    return `
+      <ul class="space-y-2 text-slate-300">
+        <li class="flex items-start space-x-2.5">
+          <i class="fa-solid fa-circle-check text-emerald-400 mt-0.5 text-[11px] shrink-0"></i>
+          <span>Оптимизация производительности, исправление ошибок и обновление каталога скинов.</span>
+        </li>
+      </ul>
+    `;
+  }
+
+  const lines = notes.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  let html = '<ul class="space-y-2 text-slate-300">';
+  for (const line of lines) {
+    if (line.startsWith('#')) {
+      const heading = line.replace(/^#+\s*/, '');
+      html += `<li class="font-bold text-indigo-300 pt-1 text-[11px] uppercase tracking-wider">${escapeHtml(heading)}</li>`;
+    } else if (line.startsWith('-') || line.startsWith('*')) {
+      const item = line.replace(/^[-*]\s*/, '');
+      html += `
+        <li class="flex items-start space-x-2.5">
+          <i class="fa-solid fa-circle-dot text-emerald-400 mt-1 text-[9px] shrink-0"></i>
+          <span>${escapeHtml(item)}</span>
+        </li>
+      `;
+    } else {
+      html += `<li class="text-slate-300">${escapeHtml(line)}</li>`;
+    }
+  }
+  html += '</ul>';
+  return html;
+}
+
+function escapeHtml(str) {
+  return (str || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+window.initUpdateNotification = async function() {
+  if (!window.dotaManager || typeof window.dotaManager.checkUpdate !== 'function') {
+    return;
+  }
+
+  // Prevent duplicate concurrent requests
+  if (!window._updateCheckPromise) {
+    window._updateCheckPromise = window.dotaManager.checkUpdate().catch(err => {
+      console.warn('[Updater] Check failed:', err);
+      return { success: false, message: String(err) };
+    });
+  }
+
+  const res = await window._updateCheckPromise;
+  window._updateCheckPromise = null;
+
+  const banner = document.getElementById('updateNotificationBanner');
+  const btn = document.getElementById('headerUpdateBtn');
+  const badge = document.getElementById('headerUpdateBadge');
+  const currentVer = window.getAppVersion();
+
+  if (btn) {
+    btn.classList.remove('hidden');
+    btn.style.display = 'flex';
+  }
+
+  if (res && res.success && res.version) {
+    const hasNewerVersion = compareVersions(res.version, currentVer) > 0;
+    if (hasNewerVersion) {
+      window._availableUpdate = res;
+
+      if (btn) {
+        btn.classList.add('border-indigo-500/50', 'bg-indigo-600/20', 'text-indigo-200', 'ring-2', 'ring-indigo-500/30');
+        btn.title = `Доступно обновление v${res.version}! Нажмите для установки.`;
+      }
+      if (badge) {
+        badge.textContent = `v${res.version}`;
+        badge.classList.remove('hidden');
+        badge.style.display = 'inline-block';
+      }
+
+      // Update banner text dynamically
+      const bannerTitle = document.getElementById('updateBannerTitle');
+      if (bannerTitle) {
+        bannerTitle.textContent = `Доступно обновление DotaMod Hub v${res.version}`;
+      }
+      const bannerSubtitle = document.getElementById('updateBannerSubtitle');
+      if (bannerSubtitle) {
+        const sizeInfo = res.assetSize ? ` (${formatBytes(res.assetSize)})` : '';
+        bannerSubtitle.textContent = `Новая версия v${res.version}${sizeInfo} уже доступна на GitHub. Нажмите «Обновить сейчас» для автоматической загрузки.`;
+      }
+
+      const snoozeTime = localStorage.getItem('dotamod_update_snooze');
+      const snoozedVer = localStorage.getItem('dotamod_snoozed_version');
+      if (snoozeTime && snoozedVer === res.version) {
+        const hoursPassed = (Date.now() - parseInt(snoozeTime, 10)) / (1000 * 60 * 60);
+        if (hoursPassed < 24) {
+          if (banner) { banner.classList.add('hidden'); banner.style.display = 'none'; }
+          return;
+        }
+      }
+
+      if (banner) {
+        banner.classList.remove('hidden');
+        banner.style.display = 'flex';
+        banner.style.opacity = '1';
+        banner.style.transform = 'translateY(0)';
+      }
+
+      if (!window._updateToastShown) {
+        window._updateToastShown = true;
+        setTimeout(() => {
+          showToast(`🔥 Доступна новая версия DotaMod Hub v${res.version}! Нажмите кнопку обновления в шапке.`, 'info', 7000);
+        }, 1200);
+      }
+      return;
+    }
+  }
+
+  // No newer version or error
+  window._availableUpdate = null;
+  if (btn) {
+    btn.classList.remove('border-indigo-500/50', 'bg-indigo-600/20', 'text-indigo-200', 'ring-2', 'ring-indigo-500/30');
+    btn.title = `DotaMod Hub v${currentVer} (Обновлений не требуется)`;
+  }
+  if (badge) {
+    badge.classList.add('hidden');
+    badge.style.display = 'none';
+  }
+  if (banner) {
+    banner.classList.add('hidden');
+    banner.style.display = 'none';
+  }
+};
+
 window.dismissUpdateNotification = function() {
   const banner = document.getElementById('updateNotificationBanner');
   if (banner) {
@@ -5689,37 +5761,55 @@ window.dismissUpdateNotification = function() {
     }, 250);
   }
   try {
+    const targetVer = window._availableUpdate ? window._availableUpdate.version : '';
     localStorage.setItem('dotamod_update_snooze', Date.now().toString());
-    localStorage.setItem('dotamod_snoozed_version', TARGET_UPDATE_VERSION);
+    localStorage.setItem('dotamod_snoozed_version', targetVer);
   } catch (e) {}
   showToast('Уведомление об обновлении отложено', 'info');
 };
 
 window.checkAppUpdates = async function(manual = false) {
   if (manual) {
-    showToast('Проверка наличия обновлений DotaMod Hub...', 'info');
+    showToast('Проверка наличия обновлений на GitHub...', 'info');
   }
 
-  await new Promise(resolve => setTimeout(resolve, 400));
+  if (!window.dotaManager || typeof window.dotaManager.checkUpdate !== 'function') {
+    if (manual) showToast('Модуль обновления недоступен в браузере', 'warning');
+    return;
+  }
 
-  const currentVer = window.getAppVersion();
-  const hasNewer = compareVersions(TARGET_UPDATE_VERSION, currentVer) > 0;
+  try {
+    const res = await window.dotaManager.checkUpdate();
+    const currentVer = window.getAppVersion();
 
-  if (hasNewer) {
-    const banner = document.getElementById('updateNotificationBanner');
-    if (banner) {
-      banner.classList.remove('hidden');
-      banner.style.display = 'flex';
-      banner.style.opacity = '1';
-      banner.style.transform = 'translateY(0)';
+    if (!res || !res.success) {
+      if (manual) {
+        showToast(res && res.message ? `Ошибка проверки: ${res.message}` : 'Не удалось связаться с сервером обновлений', 'error');
+      }
+      return;
     }
-    openUpdateModal();
-  } else {
-    const banner = document.getElementById('updateNotificationBanner');
-    if (banner) { banner.classList.add('hidden'); banner.style.display = 'none'; }
-    if (manual) {
-      showToast(`У вас установлена актуальная версия DotaMod Hub (v${currentVer}). Все функции и моды работают штатно!`, 'success');
+
+    const hasNewer = compareVersions(res.version, currentVer) > 0;
+    if (hasNewer) {
+      window._availableUpdate = res;
+      const banner = document.getElementById('updateNotificationBanner');
+      if (banner) {
+        banner.classList.remove('hidden');
+        banner.style.display = 'flex';
+        banner.style.opacity = '1';
+        banner.style.transform = 'translateY(0)';
+      }
+      openUpdateModal();
+    } else {
+      window._availableUpdate = null;
+      const banner = document.getElementById('updateNotificationBanner');
+      if (banner) { banner.classList.add('hidden'); banner.style.display = 'none'; }
+      if (manual) {
+        showToast(`У вас установлена актуальная версия DotaMod Hub (v${currentVer}). Все функции и моды работают штатно!`, 'success');
+      }
     }
+  } catch (e) {
+    if (manual) showToast(`Ошибка при проверке обновлений: ${e.message}`, 'error');
   }
 };
 
@@ -5728,7 +5818,8 @@ window.openUpdateModal = function() {
   if (!modal) return;
 
   const currentVer = window.getAppVersion();
-  const hasNewer = compareVersions(TARGET_UPDATE_VERSION, currentVer) > 0;
+  const updateData = window._availableUpdate;
+  const hasNewer = updateData && compareVersions(updateData.version, currentVer) > 0;
   const isEn = (window.currentAppLanguage === 'en');
 
   const currentVerEl = document.getElementById('currentModalVersionText');
@@ -5739,20 +5830,32 @@ window.openUpdateModal = function() {
   const applyBtn = document.getElementById('applyUpdateBtn');
   const dismissBtn = document.getElementById('updateModalDismissBtn');
   const targetBadge = document.getElementById('targetModalVersionBadge');
+  const changelogTitle = document.getElementById('updateChangelogTitle');
+  const changelogList = document.getElementById('updateChangelogList');
 
   if (hasNewer) {
+    const newVer = updateData.version;
+    const sizeStr = updateData.assetSize ? ` (${formatBytes(updateData.assetSize)})` : '';
+    
     if (applyBtn) {
       applyBtn.style.display = 'flex';
-      applyBtn.innerHTML = `<i class="fa-solid fa-download text-[11px]"></i> <span>${isEn ? 'Update Now' : 'Обновить сейчас'}</span>`;
+      applyBtn.disabled = false;
+      applyBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+      applyBtn.innerHTML = `<i class="fa-solid fa-download text-[11px]"></i> <span>${isEn ? 'Update Now' : 'Обновить сейчас'}${sizeStr}</span>`;
     }
     if (dismissBtn) {
       dismissBtn.innerHTML = `<i class="fa-regular fa-clock text-[11px]"></i> <span>${isEn ? 'Later' : 'Позже'}</span>`;
     }
     if (targetBadge) {
-      targetBadge.textContent = `v${TARGET_UPDATE_VERSION}`;
+      targetBadge.textContent = `v${newVer}`;
+    }
+    if (changelogTitle) {
+      changelogTitle.textContent = isEn ? `What's new in v${newVer}:` : `Что нового в релизе v${newVer}:`;
+    }
+    if (changelogList) {
+      changelogList.innerHTML = renderReleaseNotes(updateData.notes);
     }
   } else {
-    // If installed version is already latest, the update button MUST NOT be displayed!
     if (applyBtn) {
       applyBtn.style.display = 'none';
     }
@@ -5762,6 +5865,19 @@ window.openUpdateModal = function() {
     if (targetBadge) {
       targetBadge.textContent = isEn ? `v${currentVer} (Latest)` : `v${currentVer} (Актуальная)`;
     }
+    if (changelogTitle) {
+      changelogTitle.textContent = isEn ? 'Latest release notes:' : 'Информация о текущей версии:';
+    }
+    if (changelogList && updateData && updateData.notes) {
+      changelogList.innerHTML = renderReleaseNotes(updateData.notes);
+    }
+  }
+
+  // Ensure progress container is hidden on fresh open
+  const progContainer = document.getElementById('updateProgressContainer');
+  if (progContainer) {
+    progContainer.classList.add('hidden');
+    progContainer.style.display = 'none';
   }
 
   modal.classList.remove('hidden');
@@ -5778,90 +5894,104 @@ window.closeUpdateModal = function() {
   }
 };
 
-window.applyAppUpdate = function() {
+window.applyAppUpdate = async function() {
   const progContainer = document.getElementById('updateProgressContainer');
   const progBar = document.getElementById('updateProgressBar');
   const progStatus = document.getElementById('updateProgressStatus');
   const progPercent = document.getElementById('updateProgressPercent');
   const applyBtn = document.getElementById('applyUpdateBtn');
+  const dismissBtn = document.getElementById('updateModalDismissBtn');
 
   if (!progContainer || !progBar || !progStatus || !progPercent) return;
 
+  const updateData = window._availableUpdate;
+  if (!updateData || !updateData.downloadUrl) {
+    showToast('Ссылка для загрузки обновления не найдена', 'error');
+    return;
+  }
+
+  if (!window.dotaManager || typeof window.dotaManager.downloadUpdate !== 'function') {
+    showToast('Модуль загрузчика недоступен', 'error');
+    return;
+  }
+
   progContainer.classList.remove('hidden');
   progContainer.style.display = 'block';
+  progBar.style.width = '0%';
+  progPercent.textContent = '0%';
+  progStatus.innerHTML = `<i class="fa-solid fa-spinner fa-spin text-xs"></i> <span>Подключение к GitHub...</span>`;
+
   if (applyBtn) {
     applyBtn.disabled = true;
     applyBtn.classList.add('opacity-50', 'cursor-not-allowed');
   }
+  if (dismissBtn) {
+    dismissBtn.disabled = true;
+    dismissBtn.classList.add('opacity-50', 'cursor-not-allowed');
+  }
 
-  const stages = [
-    { p: 25, msg: 'Загрузка обновлений DotaMod Hub v1.7.0...' },
-    { p: 50, msg: 'Установка движка поддержки WebM-видео и фонов меню...' },
-    { p: 75, msg: 'Проверка целостности gameinfo.gi и модулей защиты VAC...' },
-    { p: 95, msg: 'Синхронизация реестра установленных модов и оптимизация...' },
-    { p: 100, msg: `DotaMod Hub v${TARGET_UPDATE_VERSION} успешно обновлен!` }
-  ];
+  // Setup download progress listener
+  if (typeof window.dotaManager.onUpdateDownloadProgress === 'function') {
+    window.dotaManager.onUpdateDownloadProgress(({ percent, receivedBytes, totalBytes }) => {
+      const p = Math.min(100, Math.max(0, percent || 0));
+      progBar.style.width = `${p}%`;
+      progPercent.textContent = `${p}%`;
+      const recMB = (receivedBytes / (1024 * 1024)).toFixed(1);
+      const totMB = totalBytes ? (totalBytes / (1024 * 1024)).toFixed(1) : '?';
+      progStatus.innerHTML = `<i class="fa-solid fa-spinner fa-spin text-xs"></i> <span>Загрузка обновления: ${recMB} / ${totMB} MB...</span>`;
+    });
+  }
 
-  let stageIdx = 0;
-  const interval = setInterval(async () => {
-    if (stageIdx < stages.length) {
-      const stage = stages[stageIdx];
-      const progress = stage.p;
-      progBar.style.width = progress + '%';
-      progPercent.textContent = progress + '%';
-      progStatus.innerHTML = progress === 100 
-        ? `<i class="fa-solid fa-circle-check text-emerald-400 text-xs"></i> <span>${stage.msg}</span>`
-        : `<i class="fa-solid fa-spinner fa-spin text-xs"></i> <span>${stage.msg}</span>`;
-      stageIdx++;
-    } else {
-      clearInterval(interval);
-      try {
-        localStorage.setItem('dotamod_app_version', TARGET_UPDATE_VERSION);
-        localStorage.removeItem('dotamod_update_snooze');
-        localStorage.removeItem('dotamod_snoozed_version');
-        sessionStorage.clear();
-        if (typeof window.refreshInstalledModsState === 'function') {
-          await window.refreshInstalledModsState();
-        }
-        if (typeof window.initUpdateNotification === 'function') {
-          window.initUpdateNotification();
-        }
-      } catch (e) {}
+  try {
+    progStatus.innerHTML = `<i class="fa-solid fa-spinner fa-spin text-xs"></i> <span>Скачивание установщика DotaMod Hub v${updateData.version}...</span>`;
+    const dlResult = await window.dotaManager.downloadUpdate(updateData.downloadUrl);
 
-      showToast(`DotaMod Hub успешно обновлен до v${TARGET_UPDATE_VERSION}!`, 'success');
-      
-      const banner = document.getElementById('updateNotificationBanner');
-      if (banner) {
-        banner.style.opacity = '0';
-        banner.style.transform = 'translateY(-10px)';
-        setTimeout(() => {
-          banner.classList.add('hidden');
-          banner.style.display = 'none';
-        }, 250);
-      }
-      const badge = document.getElementById('headerUpdateBadge');
-      if (badge) {
-        badge.classList.add('hidden');
-        badge.style.display = 'none';
-      }
+    if (!dlResult || !dlResult.success || !dlResult.filePath) {
+      throw new Error(dlResult && dlResult.message ? dlResult.message : 'Не удалось скачать файл обновления');
+    }
 
-      const currentVerEl = document.getElementById('currentModalVersionText');
-      if (currentVerEl) {
-        currentVerEl.textContent = `v${TARGET_UPDATE_VERSION}`;
-      }
+    progBar.style.width = '100%';
+    progPercent.textContent = '100%';
+    progStatus.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-400 text-xs"></i> <span>Загрузка завершена! Запуск установщика...</span>`;
 
-      setTimeout(() => {
-        closeUpdateModal();
+    // Save updated version state
+    try {
+      localStorage.setItem('dotamod_app_version', updateData.version);
+      localStorage.removeItem('dotamod_update_snooze');
+      localStorage.removeItem('dotamod_snoozed_version');
+    } catch (e) {}
+
+    showToast(`Запуск установщика v${updateData.version} и перезапуск приложения...`, 'success', 5000);
+
+    // Call install handler (which runs the executable and quits current app)
+    setTimeout(async () => {
+      const installRes = await window.dotaManager.installUpdate(dlResult.filePath);
+      if (!installRes || !installRes.success) {
+        showToast(`Ошибка запуска установщика: ${installRes ? installRes.message : 'Неизвестная ошибка'}`, 'error');
         if (applyBtn) {
           applyBtn.disabled = false;
           applyBtn.classList.remove('opacity-50', 'cursor-not-allowed');
         }
-        progContainer.classList.add('hidden');
-        progContainer.style.display = 'none';
-        progBar.style.width = '0%';
-      }, 900);
+        if (dismissBtn) {
+          dismissBtn.disabled = false;
+          dismissBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+      }
+    }, 1200);
+
+  } catch (err) {
+    console.error('[Updater] Download error:', err);
+    progStatus.innerHTML = `<i class="fa-solid fa-triangle-exclamation text-rose-400 text-xs"></i> <span>Ошибка: ${escapeHtml(err.message)}</span>`;
+    showToast(`Ошибка загрузки обновления: ${err.message}`, 'error', 6000);
+    if (applyBtn) {
+      applyBtn.disabled = false;
+      applyBtn.classList.remove('opacity-50', 'cursor-not-allowed');
     }
-  }, 380);
+    if (dismissBtn) {
+      dismissBtn.disabled = false;
+      dismissBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+    }
+  }
 };
 
 // ==========================================
@@ -6283,10 +6413,24 @@ window.checkAppUpdatesFromSettings = async function() {
     btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin text-[11px]"></i> <span>${isEn ? 'Checking...' : 'Проверка...'}</span>`;
   }
 
-  await new Promise(resolve => setTimeout(resolve, 500));
-
   const currentVer = window.getAppVersion();
-  const hasNewer = compareVersions(TARGET_UPDATE_VERSION, currentVer) > 0;
+  let hasNewer = false;
+  let updateData = null;
+
+  if (window.dotaManager && typeof window.dotaManager.checkUpdate === 'function') {
+    try {
+      const res = await window.dotaManager.checkUpdate();
+      if (res && res.success && res.version) {
+        if (compareVersions(res.version, currentVer) > 0) {
+          hasNewer = true;
+          updateData = res;
+          window._availableUpdate = res;
+        }
+      }
+    } catch (e) {
+      console.warn('[Updater] Settings check error:', e);
+    }
+  }
 
   if (btn) {
     btn.disabled = false;
@@ -6295,12 +6439,13 @@ window.checkAppUpdatesFromSettings = async function() {
 
   if (statusEl) {
     statusEl.classList.remove('hidden');
-    if (hasNewer) {
+    if (hasNewer && updateData) {
+      const sizeStr = updateData.assetSize ? ` (${formatBytes(updateData.assetSize)})` : '';
       statusEl.className = "text-[11px] p-3 rounded-xl border border-indigo-500/30 bg-indigo-500/10 text-indigo-300 flex flex-col sm:flex-row items-center justify-between gap-2.5";
       statusEl.innerHTML = `
         <div class="flex items-center gap-2">
           <i class="fa-solid fa-bolt text-amber-400 text-xs"></i>
-          <span>${isEn ? `New version v${TARGET_UPDATE_VERSION} available!` : `Доступно обновление v${TARGET_UPDATE_VERSION}!`}</span>
+          <span>${isEn ? `New version v${updateData.version}${sizeStr} available!` : `Доступно обновление v${updateData.version}${sizeStr}!`}</span>
         </div>
         <button onclick="openUpdateModal()" class="px-3 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-md transition-all flex items-center gap-1">
           <i class="fa-solid fa-download text-[10px]"></i>
@@ -6308,7 +6453,6 @@ window.checkAppUpdatesFromSettings = async function() {
         </button>
       `;
     } else {
-      // Installed version is latest version (v1.7.0): NO UPDATE BUTTON!
       statusEl.className = "text-[11px] p-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-300 flex items-center gap-2";
       statusEl.innerHTML = `
         <i class="fa-solid fa-circle-check text-sm shrink-0"></i>
@@ -6318,9 +6462,9 @@ window.checkAppUpdatesFromSettings = async function() {
   }
 
   if (!hasNewer) {
-    showToast(isEn ? `You have the latest version of DotaMod Hub (v${currentVer})!` : `У вас установлена последняя версия DotaMod Hub (v${currentVer})!`, 'success');
+    showToast(isEn ? `You have the latest version of DotaMod Hub (v${currentVer})!` : `У вас установлена актуальная версия DotaMod Hub (v${currentVer})!`, 'success');
   } else {
-    showToast(isEn ? `Update v${TARGET_UPDATE_VERSION} is available!` : `Доступно обновление DotaMod Hub v${TARGET_UPDATE_VERSION}!`, 'info');
+    showToast(isEn ? `Update v${updateData.version} is available!` : `Доступно обновление DotaMod Hub v${updateData.version}!`, 'info');
   }
 };
 

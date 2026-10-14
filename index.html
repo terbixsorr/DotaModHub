@@ -142,10 +142,10 @@
           </div>
           <div>
             <div class="flex items-center space-x-2 flex-wrap gap-y-1">
-              <h3 class="text-sm sm:text-base font-bold text-white tracking-wide">Доступно обновление DotaMod Hub v1.7.0</h3>
-              <span class="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-bold border border-emerald-500/30">ВАЖНОЕ ОБНОВЛЕНИЕ</span>
+              <h3 id="updateBannerTitle" class="text-sm sm:text-base font-bold text-white tracking-wide">Доступно обновление DotaMod Hub</h3>
+              <span id="updateBannerBadge" class="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-bold border border-emerald-500/30">ВАЖНОЕ ОБНОВЛЕНИЕ</span>
             </div>
-            <p class="text-xs text-slate-400 mt-1">Исправление работы фонов главного меню (Sematary, Dark Tree, Bliss и др.), поддержка WebM-видео и защита VAC!</p>
+            <p id="updateBannerSubtitle" class="text-xs text-slate-400 mt-1">Новая версия уже доступна на GitHub. Нажмите «Обновить сейчас» для автоматической установки.</p>
           </div>
         </div>
         <div class="flex items-center space-x-2 shrink-0 relative z-10 self-end sm:self-auto">
@@ -1004,30 +1004,32 @@
 
       <!-- Body / Changelog -->
       <div class="p-5 space-y-4 max-h-[60vh] overflow-y-auto no-scrollbar text-xs">
-        <div class="p-3.5 rounded-2xl bg-[#161a26] border border-white/5">
-          <span class="text-xs font-bold text-indigo-300 uppercase tracking-wider block mb-2">Что нового в обновлении DotaMod Hub v1.7.0:</span>
-          <ul class="space-y-2 text-slate-300">
-            <li class="flex items-start space-x-2.5">
-              <i class="fa-solid fa-clapperboard text-emerald-400 mt-0.5 text-[11px] shrink-0"></i>
-              <span><b>Фоны главного меню и поддержка WebM:</b> Полное исправление видеофонов (Sematary, Dark Tree, Bliss, Xvii и др.). Все видеофайлы <code class="text-emerald-300 font-mono">zxc.webm</code> и разметка Panorama Source 2 автоматически распаковываются на диск и воспроизводятся в главном меню без вылетов.</span>
-            </li>
-            <li class="flex items-start space-x-2.5">
-              <i class="fa-solid fa-shield-halved text-emerald-400 mt-0.5 text-[11px] shrink-0"></i>
-              <span><b>Защита от VAC и чистый gameinfo.gi:</b> Моды изолированы, системные файлы Valve остаются оригинальными — ошибка «VAC не может проверить устройство» полностью исключена.</span>
-            </li>
-            <li class="flex items-start space-x-2.5">
-              <i class="fa-solid fa-globe text-indigo-400 mt-0.5 text-[11px] shrink-0"></i>
-              <span><b>Синхронизация для русской и английской версий:</b> Моды и фоны дублируются во все языковые каталоги клиента, гарантируя загрузку при любом языке Steam.</span>
-            </li>
-            <li class="flex items-start space-x-2.5">
-              <i class="fa-solid fa-circle-check text-emerald-400 mt-0.5 text-[11px] shrink-0"></i>
-              <span><b>Сохранение статуса модов:</b> Статус «Установлен» сохраняется при любых переходах по каталогу и поиску.</span>
-            </li>
-            <li class="flex items-start space-x-2.5">
-              <i class="fa-solid fa-bolt text-indigo-400 mt-0.5 text-[11px] shrink-0"></i>
-              <span><b>Глобальная оптимизация 60 FPS:</b> Бесконечный скролл с порционной подгрузкой по 36 модов, аппаратное GPU-ускорение картинок и моментальный поиск.</span>
-            </li>
-          </ul>
+        <div id="updateChangelogContainer" class="p-3.5 rounded-2xl bg-[#161a26] border border-white/5">
+          <span id="updateChangelogTitle" class="text-xs font-bold text-indigo-300 uppercase tracking-wider block mb-2">Что нового:</span>
+          <div id="updateChangelogList" class="space-y-2 text-slate-300 leading-relaxed">
+            <ul class="space-y-2 text-slate-300">
+              <li class="flex items-start space-x-2.5">
+                <i class="fa-solid fa-clapperboard text-emerald-400 mt-0.5 text-[11px] shrink-0"></i>
+                <span><b>Фоны главного меню и поддержка WebM:</b> Полное исправление видеофонов (Sematary, Dark Tree, Bliss, Xvii и др.). Все видеофайлы <code class="text-emerald-300 font-mono">zxc.webm</code> и разметка Panorama Source 2 автоматически распаковываются на диск и воспроизводятся в главном меню без вылетов.</span>
+              </li>
+              <li class="flex items-start space-x-2.5">
+                <i class="fa-solid fa-shield-halved text-emerald-400 mt-0.5 text-[11px] shrink-0"></i>
+                <span><b>Защита от VAC и чистый gameinfo.gi:</b> Моды изолированы, системные файлы Valve остаются оригинальными — ошибка «VAC не может проверить устройство» полностью исключена.</span>
+              </li>
+              <li class="flex items-start space-x-2.5">
+                <i class="fa-solid fa-globe text-indigo-400 mt-0.5 text-[11px] shrink-0"></i>
+                <span><b>Синхронизация для русской и английской версий:</b> Моды и фоны дублируются во все языковые каталоги клиента, гарантируя загрузку при любом языке Steam.</span>
+              </li>
+              <li class="flex items-start space-x-2.5">
+                <i class="fa-solid fa-circle-check text-emerald-400 mt-0.5 text-[11px] shrink-0"></i>
+                <span><b>Сохранение статуса модов:</b> Статус «Установлен» сохраняется при любых переходах по каталогу и поиску.</span>
+              </li>
+              <li class="flex items-start space-x-2.5">
+                <i class="fa-solid fa-bolt text-indigo-400 mt-0.5 text-[11px] shrink-0"></i>
+                <span><b>Глобальная оптимизация 60 FPS:</b> Бесконечный скролл с порционной подгрузкой по 36 модов, аппаратное GPU-ускорение картинок и моментальный поиск.</span>
+              </li>
+            </ul>
+          </div>
         </div>
 
         <!-- Update Progress Section (Hidden initially) -->

@@ -1675,3 +1675,145 @@ ipcMain.handle('app:open-external', async (event, url) => {
   }
   return false;
 });
+
+// ==========================================
+// AUTO-UPDATER IPC HANDLERS (GitHub Releases)
+// ==========================================
+const GITHUB_REPO_OWNER = 'terbixsorr';
+const GITHUB_REPO_NAME = 'DotaModHub';
+
+ipcMain.handle('update:check', async () => {
+  return new Promise((resolve) => {
+    const options = {
+      hostname: 'api.github.com',
+      path: `/repos/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}/releases/latest`,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) DotaModHub-AutoUpdater'
+      }
+    };
+
+    https.get(options, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        try {
+          if (res.statusCode !== 200) {
+            return resolve({ success: false, message: `GitHub API error: ${res.statusCode}` });
+          }
+          const release = JSON.parse(data);
+          const tagName = release.tag_name || '';
+          const latestVersion = tagName.replace(/^v/, '');
+          
+          let downloadUrl = release.html_url;
+          let assetSize = null;
+          let assetName = null;
+
+          if (Array.isArray(release.assets)) {
+            const exeAsset = release.assets.find(a => a.name.toLowerCase().endsWith('.exe'));
+            if (exeAsset) {
+              downloadUrl = exeAsset.browser_download_url;
+              assetSize = exeAsset.size;
+              assetName = exeAsset.name;
+            }
+          }
+
+          resolve({
+            success: true,
+            version: latestVersion,
+            releaseName: release.name || tagName,
+            notes: release.body || '',
+            url: release.html_url,
+            downloadUrl: downloadUrl,
+            assetSize: assetSize,
+            assetName: assetName,
+            publishedAt: release.published_at
+          });
+        } catch (e) {
+          resolve({ success: false, message: e.message });
+        }
+      });
+    }).on('error', (err) => {
+      resolve({ success: false, message: err.message });
+    });
+  });
+});
+
+ipcMain.handle('update:download', async (event, downloadUrl) => {
+  if (!downloadUrl) return { success: false, message: 'URL для загрузки не указан' };
+  
+  const tempDir = app.getPath('temp');
+  const tempInstaller = path.join(tempDir, `DotaModHub_Update_${Date.now()}.exe`);
+
+  const downloadProgress = (url, destPath) => {
+    return new Promise((resolve) => {
+      const getFile = (currentUrl, redirects = 5) => {
+        if (redirects <= 0) return resolve({ success: false, message: 'Too many redirects' });
+        
+        https.get(currentUrl, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) DotaModHub-AutoUpdater'
+          }
+        }, (res) => {
+          if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+            return getFile(res.headers.location, redirects - 1);
+          }
+
+          if (res.statusCode !== 200) {
+            return resolve({ success: false, message: `HTTP Error: ${res.statusCode}` });
+          }
+
+          const totalBytes = parseInt(res.headers['content-length'] || '0', 10);
+          let receivedBytes = 0;
+          const file = fs.createWriteStream(destPath);
+
+          res.on('data', (chunk) => {
+            receivedBytes += chunk.length;
+            const percent = totalBytes > 0 ? Math.round((receivedBytes / totalBytes) * 100) : 0;
+            if (mainWindow && !mainWindow.isDestroyed()) {
+              mainWindow.webContents.send('update:download-progress', {
+                receivedBytes,
+                totalBytes,
+                percent
+              });
+            }
+          });
+
+          res.pipe(file);
+
+          file.on('finish', () => {
+            file.close();
+            resolve({ success: true, filePath: destPath });
+          });
+
+          file.on('error', (err) => {
+            fs.unlink(destPath, () => {});
+            resolve({ success: false, message: err.message });
+          });
+        }).on('error', (err) => {
+          resolve({ success: false, message: err.message });
+        });
+      };
+
+      getFile(url);
+    });
+  };
+
+  return await downloadProgress(downloadUrl, tempInstaller);
+});
+
+ipcMain.handle('update:install', async (event, installerPath) => {
+  if (!installerPath || !fs.existsSync(installerPath)) {
+    return { success: false, message: 'Файл установщика не найден' };
+  }
+
+  try {
+    // Launch new installer and quit current process
+    shell.openPath(installerPath);
+    setTimeout(() => {
+      app.quit();
+    }, 1000);
+    return { success: true };
+  } catch (e) {
+    return { success: false, message: e.message };
+  }
+});
