@@ -1,4 +1,4 @@
-﻿node_modules/
+node_modules/
 dist/
 *.exe
 *.zip
@@ -6,3 +6,4 @@ dist/
 .DS_Store
 Thumbs.db
 __temp*
+DotaModHub_FirstVersion/

@@ -265,7 +265,11 @@ const CATEGORY_NAMES_RU = {
   'fonts': ['шрифты', 'шрифт', 'fonts', 'font'],
   'shaders': ['шейдеры', 'шейдер', 'shaders', 'shader'],
   'packs': ['паки', 'пак', 'набор', 'комплект', 'packs', 'pack'],
-  'creep-deny': ['денай', 'крип денай', 'deny', 'creep-deny', 'creep deny']
+  'creep-deny': ['денай', 'крип денай', 'deny', 'creep-deny', 'creep deny'],
+  'pedestal': ['пьедестал', 'стойка', 'подиум', 'pedestal', 'pedestals'],
+  'parts': ['части', 'элементы', 'интерфейс', 'кнопки', 'parts', 'minimap', 'scoreboard', 'панели'],
+  'ranks': ['ранги', 'медали', 'звания', 'ранг', 'ranks', 'medals', 'rank'],
+  'sounds': ['звуки', 'звуковые моды', 'озвучка', 'sounds', 'sound']
 };
 
 function getHeroAliases(heroName) {
@@ -3351,7 +3355,13 @@ function getCategoryTitle(cat) {
     'versus-screens': 'Версус экраны',
     'backgrounds': 'Фоны меню',
     'huds': 'Интерфейс (HUD)',
-    'fonts': 'Шрифты'
+    'fonts': 'Шрифты',
+    'pedestal': 'Пьедесталы',
+    'parts': 'Элементы UI',
+    'ranks': 'Ранги и медали',
+    'sounds': 'Звуковые моды',
+    'other': 'Прочее',
+    'sets': 'Наборы сетов'
   };
   const mapEn = {
     'heroes': 'Hero Skin',
@@ -3373,7 +3383,13 @@ function getCategoryTitle(cat) {
     'versus-screens': 'Versus Screens',
     'backgrounds': 'Menu Backgrounds',
     'huds': 'HUD & Interface',
-    'fonts': 'Fonts'
+    'fonts': 'Fonts',
+    'pedestal': 'Pedestals',
+    'parts': 'UI Elements',
+    'ranks': 'Rank Medals',
+    'sounds': 'Sound Mods',
+    'other': 'Other',
+    'sets': 'Item Sets'
   };
   const map = isEn ? mapEn : mapRu;
   return map[cat] || (isEn ? 'Mod' : 'Мод');
