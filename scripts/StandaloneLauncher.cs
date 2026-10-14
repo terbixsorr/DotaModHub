@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.IO.Compression;
 using System.Diagnostics;
@@ -103,9 +103,30 @@ namespace DotaModHubLauncher {
             string appDir = Path.Combine(localAppData, "Programs", "DotaModHub");
             string targetExe = Path.Combine(appDir, "DotaModHub.exe");
             string markerFile = Path.Combine(appDir, ".v150_installed");
+            string selfPath = GetSafeSelfPath();
 
-            // If already extracted and marker matches, launch immediately without showing splash!
+            bool forceUpdate = false;
+            if (args != null) {
+                foreach (string a in args) {
+                    if (a == "--update" || a == "--force" || a == "-f") forceUpdate = true;
+                }
+            }
+
+            // If already extracted, verify that the current launcher executable hasn't been updated
+            bool isUpToDate = false;
             if (File.Exists(targetExe) && File.Exists(markerFile)) {
+                try {
+                    DateTime markerTime = File.GetLastWriteTimeUtc(markerFile);
+                    DateTime selfTime = File.GetLastWriteTimeUtc(selfPath);
+                    if (selfTime <= markerTime.AddSeconds(5)) {
+                        isUpToDate = true;
+                    }
+                } catch {
+                    isUpToDate = true;
+                }
+            }
+
+            if (isUpToDate && !forceUpdate) {
                 LaunchApp(targetExe, appDir, args);
                 return;
             }
@@ -122,7 +143,7 @@ namespace DotaModHubLauncher {
                         Directory.CreateDirectory(appDir);
                     }
 
-                    string selfPath = GetSafeSelfPath();
+                    selfPath = GetSafeSelfPath();
                     using (FileStream fs = new FileStream(selfPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite)) {
                         if (fs.Length < 16) {
                             throw new Exception("Некорректный размер файла сборки.");
@@ -170,6 +191,7 @@ namespace DotaModHubLauncher {
                                 }
                             }
                             File.WriteAllText(markerFile, DateTime.UtcNow.ToString("o"));
+                            File.SetLastWriteTimeUtc(markerFile, DateTime.UtcNow.AddMinutes(5));
                         } finally {
                             if (File.Exists(tempZip)) {
                                 try { File.Delete(tempZip); } catch {}

@@ -1807,13 +1807,25 @@ ipcMain.handle('update:install', async (event, installerPath) => {
   }
 
   try {
-    // Launch new installer and quit current process
-    shell.openPath(installerPath);
+    const { spawn } = require('child_process');
+    const child = spawn(installerPath, [], {
+      detached: true,
+      stdio: 'ignore'
+    });
+    child.unref();
     setTimeout(() => {
       app.quit();
-    }, 1000);
+    }, 800);
     return { success: true };
   } catch (e) {
-    return { success: false, message: e.message };
+    try {
+      await shell.openPath(installerPath);
+      setTimeout(() => {
+        app.quit();
+      }, 1000);
+      return { success: true };
+    } catch (err2) {
+      return { success: false, message: err2.message };
+    }
   }
 });

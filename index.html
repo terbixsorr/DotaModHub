@@ -96,10 +96,10 @@
           <span class="inline font-medium" data-i18n="settingsBtn">Настройки</span>
         </button>
 
-        <!-- Dynamic Header Update Button (Visible when update is available or for manual check) -->
-        <button id="headerUpdateBtn" onclick="checkAppUpdates(true)" class="hidden px-3.5 py-2.5 rounded-2xl bg-[#161a26] hover:bg-[#1f2436] text-slate-300 hover:text-white text-xs font-medium border border-white/5 items-center space-x-1.5 transition-all hover:border-white/15" title="Проверить обновления">
+        <!-- Dynamic Header Update Button (Always visible for update center access) -->
+        <button id="headerUpdateBtn" onclick="openUpdateModal()" class="flex px-3.5 py-2.5 rounded-2xl bg-[#161a26] hover:bg-[#1f2436] text-slate-300 hover:text-white text-xs font-medium border border-white/5 items-center space-x-1.5 transition-all hover:border-white/15" title="Центр обновлений DotaMod Hub">
           <i class="fa-solid fa-arrows-rotate text-indigo-400 text-xs"></i>
-          <span class="hidden xl:inline">Обновление</span>
+          <span>Обновление</span>
           <span id="headerUpdateBadge" class="hidden px-1.5 py-0.5 rounded-full bg-indigo-500 text-white text-[10px] font-bold">NEW</span>
         </button>
 

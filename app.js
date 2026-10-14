@@ -5656,6 +5656,17 @@ function escapeHtml(str) {
 }
 
 window.initUpdateNotification = async function() {
+  const btn = document.getElementById('headerUpdateBtn');
+  const badge = document.getElementById('headerUpdateBadge');
+  const banner = document.getElementById('updateNotificationBanner');
+  const currentVer = window.getAppVersion();
+
+  // Always keep update button accessible and visible in header
+  if (btn) {
+    btn.classList.remove('hidden');
+    btn.style.display = 'flex';
+  }
+
   if (!window.dotaManager || typeof window.dotaManager.checkUpdate !== 'function') {
     return;
   }
@@ -5671,22 +5682,11 @@ window.initUpdateNotification = async function() {
   const res = await window._updateCheckPromise;
   window._updateCheckPromise = null;
 
-  const banner = document.getElementById('updateNotificationBanner');
-  const btn = document.getElementById('headerUpdateBtn');
-  const badge = document.getElementById('headerUpdateBadge');
-  const currentVer = window.getAppVersion();
-
-  // Always keep update button accessible in header
-  if (btn) {
-    btn.classList.remove('hidden');
-    btn.style.display = 'flex';
-  }
-
   if (res && res.success && res.version) {
+    window._availableUpdate = res; // Always save latest release metadata!
     const hasNewerVersion = compareVersions(res.version, currentVer) > 0;
-    if (hasNewerVersion) {
-      window._availableUpdate = res;
 
+    if (hasNewerVersion) {
       if (btn) {
         btn.classList.add('border-indigo-500/50', 'bg-indigo-600/25', 'text-indigo-200', 'ring-2', 'ring-indigo-500/30');
         btn.title = `Доступно обновление v${res.version}! Нажмите для установки.`;
@@ -5732,14 +5732,28 @@ window.initUpdateNotification = async function() {
         }, 1200);
       }
       return;
+    } else {
+      // Local version is latest release
+      if (btn) {
+        btn.classList.remove('border-indigo-500/50', 'bg-indigo-600/25', 'ring-2', 'ring-indigo-500/30');
+        btn.title = `DotaMod Hub v${currentVer} (Актуальная версия)`;
+      }
+      if (badge) {
+        badge.classList.add('hidden');
+        badge.style.display = 'none';
+      }
+      if (banner) {
+        banner.classList.add('hidden');
+        banner.style.display = 'none';
+      }
+      return;
     }
   }
 
-  // No newer version or check finished without pending updates
-  window._availableUpdate = null;
+  // Check finished without pending updates or offline
   if (btn) {
     btn.classList.remove('border-indigo-500/50', 'bg-indigo-600/25', 'ring-2', 'ring-indigo-500/30');
-    btn.title = `DotaMod Hub v${currentVer} (Проверить обновления)`;
+    btn.title = `DotaMod Hub v${currentVer} (Центр обновлений)`;
   }
   if (badge) {
     badge.classList.add('hidden');
@@ -5786,13 +5800,15 @@ window.checkAppUpdates = async function(manual = false) {
     if (!res || !res.success) {
       if (manual) {
         showToast(res && res.message ? `Ошибка проверки: ${res.message}` : 'Не удалось связаться с сервером обновлений', 'error');
+        window.openUpdateModal();
       }
       return;
     }
 
+    window._availableUpdate = res; // Always save release info!
     const hasNewer = compareVersions(res.version, currentVer) > 0;
+
     if (hasNewer) {
-      window._availableUpdate = res;
       const banner = document.getElementById('updateNotificationBanner');
       if (banner) {
         banner.classList.remove('hidden');
@@ -5800,27 +5816,25 @@ window.checkAppUpdates = async function(manual = false) {
         banner.style.opacity = '1';
         banner.style.transform = 'translateY(0)';
       }
-      openUpdateModal();
     } else {
-      window._availableUpdate = null;
       const banner = document.getElementById('updateNotificationBanner');
       if (banner) { banner.classList.add('hidden'); banner.style.display = 'none'; }
-      if (manual) {
-        showToast(`У вас установлена актуальная версия DotaMod Hub (v${currentVer}). Все функции и моды работают штатно!`, 'success');
-      }
+    }
+
+    if (manual) {
+      window.openUpdateModal();
     }
   } catch (e) {
     if (manual) showToast(`Ошибка при проверке обновлений: ${e.message}`, 'error');
   }
 };
 
-window.openUpdateModal = function() {
+window.openUpdateModal = async function() {
   const modal = document.getElementById('updateModal');
   if (!modal) return;
 
   const currentVer = window.getAppVersion();
-  const updateData = window._availableUpdate;
-  const hasNewer = updateData && compareVersions(updateData.version, currentVer) > 0;
+  let updateData = window._availableUpdate;
   const isEn = (window.currentAppLanguage === 'en');
 
   const currentVerEl = document.getElementById('currentModalVersionText');
@@ -5834,6 +5848,24 @@ window.openUpdateModal = function() {
   const changelogTitle = document.getElementById('updateChangelogTitle');
   const changelogList = document.getElementById('updateChangelogList');
 
+  // If no cached release data, try fetching in background
+  if (!updateData && window.dotaManager && typeof window.dotaManager.checkUpdate === 'function') {
+    if (applyBtn) {
+      applyBtn.disabled = true;
+      applyBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin text-[11px]"></i> <span>${isEn ? 'Checking...' : 'Проверка...'}</span>`;
+    }
+    try {
+      const res = await window.dotaManager.checkUpdate();
+      if (res && res.success) {
+        window._availableUpdate = res;
+        updateData = res;
+      }
+    } catch (e) {}
+  }
+
+  const hasNewer = updateData && compareVersions(updateData.version, currentVer) > 0;
+  const isUpToDate = updateData && compareVersions(updateData.version, currentVer) <= 0;
+
   if (hasNewer) {
     const newVer = updateData.version;
     const sizeStr = updateData.assetSize ? ` (${formatBytes(updateData.assetSize)})` : '';
@@ -5842,35 +5874,69 @@ window.openUpdateModal = function() {
       applyBtn.style.display = 'flex';
       applyBtn.disabled = false;
       applyBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-      applyBtn.innerHTML = `<i class="fa-solid fa-download text-[11px]"></i> <span>${isEn ? 'Update Now' : 'Обновить сейчас'}${sizeStr}</span>`;
+      applyBtn.className = 'px-5 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-emerald-600 hover:from-indigo-500 hover:to-emerald-500 text-white font-bold shadow-md shadow-indigo-600/25 transition-all flex items-center space-x-1.5';
+      applyBtn.innerHTML = `<i class="fa-solid fa-cloud-arrow-down text-[11px]"></i> <span>${isEn ? 'Update Now' : 'Обновить сейчас'}${sizeStr}</span>`;
+      applyBtn.onclick = () => window.applyAppUpdate();
     }
     if (dismissBtn) {
       dismissBtn.innerHTML = `<i class="fa-regular fa-clock text-[11px]"></i> <span>${isEn ? 'Later' : 'Позже'}</span>`;
     }
     if (targetBadge) {
-      targetBadge.textContent = `v${newVer}`;
+      targetBadge.className = 'px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-bold border border-emerald-500/30';
+      targetBadge.textContent = `v${newVer} (Доступно)`;
     }
     if (changelogTitle) {
       changelogTitle.textContent = isEn ? `What's new in v${newVer}:` : `Что нового в релизе v${newVer}:`;
     }
-    if (changelogList) {
+    if (changelogList && updateData.notes) {
       changelogList.innerHTML = renderReleaseNotes(updateData.notes);
     }
-  } else {
+  } else if (isUpToDate) {
+    // Up-to-date with GitHub release: ALWAYS KEEP BUTTON VISIBLE for reinstall / test
+    const sizeStr = updateData.assetSize ? ` (${formatBytes(updateData.assetSize)})` : '';
     if (applyBtn) {
-      applyBtn.style.display = 'none';
+      applyBtn.style.display = 'flex';
+      applyBtn.disabled = false;
+      applyBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+      applyBtn.className = 'px-5 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-bold shadow-md shadow-indigo-600/25 transition-all flex items-center space-x-1.5';
+      applyBtn.innerHTML = `<i class="fa-solid fa-arrows-rotate text-[11px]"></i> <span>${isEn ? `Reinstall / Download v${updateData.version}${sizeStr}` : `Переустановить / Скачать v${updateData.version}${sizeStr}`}</span>`;
+      applyBtn.onclick = () => window.applyAppUpdate();
     }
     if (dismissBtn) {
       dismissBtn.innerHTML = `<i class="fa-solid fa-check text-[11px]"></i> <span>${isEn ? 'Close' : 'Закрыть'}</span>`;
     }
     if (targetBadge) {
+      targetBadge.className = 'px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 text-[10px] font-bold border border-indigo-500/30';
       targetBadge.textContent = isEn ? `v${currentVer} (Latest)` : `v${currentVer} (Актуальная)`;
     }
     if (changelogTitle) {
-      changelogTitle.textContent = isEn ? 'Latest release notes:' : 'Информация о текущей версии:';
+      changelogTitle.textContent = isEn ? 'Latest release information:' : 'Информация о текущей версии:';
     }
-    if (changelogList && updateData && updateData.notes) {
+    if (changelogList && updateData.notes) {
       changelogList.innerHTML = renderReleaseNotes(updateData.notes);
+    }
+  } else {
+    // Offline or check failed
+    if (applyBtn) {
+      applyBtn.style.display = 'flex';
+      applyBtn.disabled = false;
+      applyBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+      applyBtn.className = 'px-5 py-2 rounded-xl bg-[#161a26] hover:bg-[#1f2436] text-white font-bold border border-white/10 transition-all flex items-center space-x-1.5';
+      applyBtn.innerHTML = `<i class="fa-solid fa-arrows-rotate text-[11px]"></i> <span>${isEn ? 'Check Again' : 'Проверить снова'}</span>`;
+      applyBtn.onclick = async () => {
+        window._availableUpdate = null;
+        await window.checkAppUpdates(true);
+      };
+    }
+    if (dismissBtn) {
+      dismissBtn.innerHTML = `<i class="fa-solid fa-xmark text-[11px]"></i> <span>${isEn ? 'Close' : 'Закрыть'}</span>`;
+    }
+    if (targetBadge) {
+      targetBadge.className = 'px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 text-[10px] font-bold border border-white/10';
+      targetBadge.textContent = `v${currentVer}`;
+    }
+    if (changelogTitle) {
+      changelogTitle.textContent = isEn ? 'Current Version:' : 'Текущая версия:';
     }
   }
 
@@ -6422,11 +6488,9 @@ window.checkAppUpdatesFromSettings = async function() {
     try {
       const res = await window.dotaManager.checkUpdate();
       if (res && res.success && res.version) {
-        if (compareVersions(res.version, currentVer) > 0) {
-          hasNewer = true;
-          updateData = res;
-          window._availableUpdate = res;
-        }
+        updateData = res;
+        window._availableUpdate = res; // Always save release info
+        hasNewer = compareVersions(res.version, currentVer) > 0;
       }
     } catch (e) {
       console.warn('[Updater] Settings check error:', e);
@@ -6448,16 +6512,22 @@ window.checkAppUpdatesFromSettings = async function() {
           <i class="fa-solid fa-bolt text-amber-400 text-xs"></i>
           <span>${isEn ? `New version v${updateData.version}${sizeStr} available!` : `Доступно обновление v${updateData.version}${sizeStr}!`}</span>
         </div>
-        <button onclick="openUpdateModal()" class="px-3 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-md transition-all flex items-center gap-1">
+        <button onclick="openUpdateModal()" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-md transition-all flex items-center gap-1 shrink-0">
           <i class="fa-solid fa-download text-[10px]"></i>
           <span>${isEn ? 'Update Now' : 'Обновить сейчас'}</span>
         </button>
       `;
     } else {
-      statusEl.className = "text-[11px] p-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-300 flex items-center gap-2";
+      statusEl.className = "text-[11px] p-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-300 flex flex-col sm:flex-row items-center justify-between gap-2.5";
       statusEl.innerHTML = `
-        <i class="fa-solid fa-circle-check text-sm shrink-0"></i>
-        <span>${isEn ? `You are on the latest version of DotaMod Hub (v${currentVer}). All mods and features are up to date!` : `У вас установлена последняя версия DotaMod Hub (v${currentVer}). Все функции и моды актуальны!`}</span>
+        <div class="flex items-center gap-2">
+          <i class="fa-solid fa-circle-check text-sm shrink-0"></i>
+          <span>${isEn ? `You have the latest version (v${currentVer}). All mods and features are up to date!` : `У вас установлена последняя версия (v${currentVer}). Все функции и моды актуальны!`}</span>
+        </div>
+        <button onclick="openUpdateModal()" class="px-3 py-1.5 rounded-lg bg-[#161a26] hover:bg-[#1f2436] text-white font-semibold text-xs border border-white/10 transition-all flex items-center gap-1 shrink-0">
+          <i class="fa-solid fa-arrows-rotate text-[10px]"></i>
+          <span>${isEn ? 'Update Center / Reinstall' : 'Центр обновлений / Переустановка'}</span>
+        </button>
       `;
     }
   }
