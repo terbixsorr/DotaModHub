@@ -1983,8 +1983,14 @@ function renderRecentlyAdded() {
     candidateMods = candidateMods.filter(mod => mod.hero && mod.hero.toLowerCase() === activeHeroFilter.toLowerCase());
   }
 
-  const isFiltered = (activeCategoryFilter && activeCategoryFilter !== 'all') || (activeHeroFilter && activeHeroFilter !== 'all');
-  const recentMods = isFiltered ? candidateMods.slice(0, 16) : candidateMods.slice(-16).reverse();
+  // Prioritize mods explicitly marked as recently added
+  const recentFlagged = candidateMods.filter(mod => mod.is_recently_added);
+  let recentMods = [];
+  if (recentFlagged.length > 0) {
+    recentMods = recentFlagged.slice(0, 36);
+  } else {
+    recentMods = candidateMods.slice(0, 16);
+  }
 
   if (recentMods.length === 0) {
     if (section) section.classList.add('hidden');
@@ -2646,8 +2652,10 @@ function renderMods(resetCount = true) {
     return matchesHero && matchesItem && matchesCat;
   });
 
-  // Sort mods alphabetically by title (A-Z / А-Я)
+  // Sort mods: newly added first, then alphabetically by title (A-Z / А-Я)
   filtered.sort((a, b) => {
+    if (a.is_recently_added && !b.is_recently_added) return -1;
+    if (!a.is_recently_added && b.is_recently_added) return 1;
     const titleA = a.title || '';
     const titleB = b.title || '';
     return titleA.localeCompare(titleB, 'ru', { sensitivity: 'base' });
@@ -2985,6 +2993,7 @@ function createCardHTML(mod) {
 
         <!-- Badges -->
         <div class="absolute bottom-2.5 left-2.5 z-10 flex items-center space-x-1">
+          ${mod.is_recently_added ? `<span class="px-1.5 py-0.5 rounded-lg bg-emerald-500 text-white text-[9px] font-black shadow tracking-wider">NEW</span>` : ''}
           ${isBg ? `
             <span class="px-2 py-0.5 rounded-lg ${isBgVid ? 'bg-rose-950/90 text-rose-300 border-rose-500/40' : 'bg-sky-950/90 text-sky-300 border-sky-500/40'} border text-[10px] font-bold flex items-center gap-1 shadow-md backdrop-blur-sm">
               <i class="fa-solid ${isBgVid ? 'fa-video' : 'fa-image'} text-[9px]"></i>
@@ -3255,6 +3264,7 @@ function createModListRowHTML(mod) {
             >
               ${mod.title}
             </h3>
+            ${mod.is_recently_added ? `<span class="px-1.5 py-0.2 rounded-md bg-emerald-500 text-white text-[9px] font-black shrink-0 shadow">NEW</span>` : ''}
             ${isBg ? `<span class="px-1.5 py-0.5 rounded-md ${isBgVid ? 'bg-rose-500/20 text-rose-300 border-rose-500/30' : 'bg-sky-500/20 text-sky-300 border-sky-500/30'} border text-[9px] font-bold shrink-0 flex items-center gap-1"><i class="fa-solid ${isBgVid ? 'fa-video' : 'fa-image'} text-[8px]"></i>${isBgVid ? (isEn ? 'Видео' : 'Видео') : (isEn ? 'Картинка' : 'Картинка')}</span>` : ''}
             ${mod.has_effects ? `<span class="px-1.5 py-0.2 rounded-md bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-[9px] font-bold shrink-0">FX</span>` : ''}
             ${isInstalled ? `<span class="px-1.5 py-0.2 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[9px] font-bold shrink-0">${isEn ? 'In Game' : 'В игре'}</span>` : ''}
