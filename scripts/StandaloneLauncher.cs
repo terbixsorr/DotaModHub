@@ -32,7 +32,7 @@ namespace DotaModHubLauncher {
             this.Controls.Add(lblTitle);
 
             lblSub = new Label();
-            lblSub.Text = "Dota 2 Ultimate Modding Suite • v1.5.0";
+            lblSub.Text = "Dota 2 Ultimate Modding Suite • v1.6.0";
             lblSub.Font = new Font("Segoe UI", 8, FontStyle.Regular);
             lblSub.ForeColor = Color.FromArgb(99, 102, 241); // indigo-500
             lblSub.Location = new Point(20, 56);
@@ -102,7 +102,7 @@ namespace DotaModHubLauncher {
             string localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
             string appDir = Path.Combine(localAppData, "Programs", "DotaModHub");
             string targetExe = Path.Combine(appDir, "DotaModHub.exe");
-            string markerFile = Path.Combine(appDir, ".v150_installed");
+            string markerFile = Path.Combine(appDir, ".v160_installed");
             string selfPath = GetSafeSelfPath();
 
             bool forceUpdate = false;

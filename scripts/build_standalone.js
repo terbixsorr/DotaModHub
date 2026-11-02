@@ -2,14 +2,18 @@ const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
 
-console.log('=== СБОРКА АВТОНОМНОГО SINGLE EXE DOTAMOD HUB ===');
+console.log('=== СБОРКА АВТОНОМНОГО SINGLE EXE DOTAMOD HUB v1.6.0 ===');
 
 const ROOT_DIR = path.resolve(__dirname, '..');
-const DIST_PAYLOAD = path.join(ROOT_DIR, 'dist', 'DotaModHub-win32-x64');
+const DIST_PAYLOAD = fs.existsSync(path.join(ROOT_DIR, 'dist', 'DotaModHub-win32-x64'))
+  ? path.join(ROOT_DIR, 'dist', 'DotaModHub-win32-x64')
+  : path.join(ROOT_DIR, 'DotaModHub', 'dist', 'DotaModHub-win32-x64');
 const TEMP_ZIP = path.join(ROOT_DIR, 'temp_payload.zip');
 const STUB_EXE = path.join(ROOT_DIR, 'launcher_stub.exe');
-const TARGET_EXE = path.join(ROOT_DIR, 'DotaModHub-v1.5.0.exe');
-const ICON_PATH = path.join(ROOT_DIR, 'dist', 'app.ico');
+const TARGET_EXE = path.join(ROOT_DIR, 'DotaModHub-v1.6.0.exe');
+const ICON_PATH = fs.existsSync(path.join(ROOT_DIR, 'dist', 'app.ico'))
+  ? path.join(ROOT_DIR, 'dist', 'app.ico')
+  : path.join(ROOT_DIR, 'DotaModHub', 'dist', 'app.ico');
 const CSC_PATH = 'C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\csc.exe';
 
 if (!fs.existsSync(DIST_PAYLOAD)) {
@@ -17,14 +21,14 @@ if (!fs.existsSync(DIST_PAYLOAD)) {
   process.exit(1);
 }
 
-if (fs.existsSync(TEMP_ZIP) && fs.statSync(TEMP_ZIP).size > 300 * 1024 * 1024) {
-  console.log('1. Используем существующий temp_payload.zip...');
-} else {
-  if (fs.existsSync(TEMP_ZIP)) fs.unlinkSync(TEMP_ZIP);
-  console.log('1. Упаковка файлов приложения в payload.zip (Optimal compression)...');
-  const psZipCmd = `[System.IO.Compression.ZipFile]::CreateFromDirectory('${DIST_PAYLOAD}', '${TEMP_ZIP}', [System.IO.Compression.CompressionLevel]::Optimal, $false)`;
-  execSync(`powershell -NoProfile -Command "Add-Type -AssemblyName System.IO.Compression.FileSystem; ${psZipCmd}"`, { stdio: 'inherit' });
+if (fs.existsSync(TEMP_ZIP)) {
+  try { fs.unlinkSync(TEMP_ZIP); } catch (e) {}
 }
+
+console.log('1. Упаковка файлов приложения в payload.zip (Optimal compression)...');
+console.log(`Источник: ${DIST_PAYLOAD}`);
+const psZipCmd = `[System.IO.Compression.ZipFile]::CreateFromDirectory('${DIST_PAYLOAD}', '${TEMP_ZIP}', [System.IO.Compression.CompressionLevel]::Optimal, $false)`;
+execSync(`powershell -NoProfile -Command "Add-Type -AssemblyName System.IO.Compression.FileSystem; ${psZipCmd}"`, { stdio: 'inherit' });
 
 const zipStats = fs.statSync(TEMP_ZIP);
 console.log(`Размер архива: ${(zipStats.size / (1024 * 1024)).toFixed(2)} MB`);
