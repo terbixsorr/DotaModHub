@@ -14,6 +14,7 @@ contextBridge.exposeInMainWorld('dotaManager', {
   deleteAllMods: (dotaPath) => ipcRenderer.invoke('dota:delete-all-mods', dotaPath),
   repairVac: (dotaPath) => ipcRenderer.invoke('dota:repair-vac', dotaPath),
   checkStatus: () => ipcRenderer.invoke('dota:check-status'),
+  closeGame: () => ipcRenderer.invoke('dota:close-game'),
   launchGame: (dotaPath) => ipcRenderer.invoke('dota:launch-game', dotaPath),
   getSteamUser: () => ipcRenderer.invoke('steam:get-user'),
   applyUserConfigs: (options) => ipcRenderer.invoke('steam:apply-configs', options),

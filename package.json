@@ -1,7 +1,7 @@
 {
   "name": "dotamod-desktop",
-  "version": "1.5.0",
-  "description": "DotaMod Hub - Modern Desktop Client (Electron Prototype)",
+  "version": "1.6.0",
+  "description": "DotaMod Hub v1.6.0 - Advanced Source 2 Skin Orchestrator & Asset Management System for Dota 2",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
@@ -9,11 +9,15 @@
   },
   "keywords": [
     "dota2",
-    "mods",
+    "source2",
+    "vpk",
+    "skin-changer",
+    "asset-manager",
+    "mod-manager",
     "desktop",
     "electron"
   ],
-  "author": "DotaMod Hub",
+  "author": "DotaMod Hub Engineering Team",
   "license": "MIT",
   "devDependencies": {
     "electron": "^28.3.3",

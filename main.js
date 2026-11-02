@@ -6,6 +6,19 @@ const { exec } = require('child_process');
 
 let mainWindow;
 
+// Single-instance lock to prevent concurrent file locking & collision
+const gotSingleInstanceLock = app.requestSingleInstanceLock();
+if (!gotSingleInstanceLock) {
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.focus();
+    }
+  });
+}
+
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1440,
@@ -118,19 +131,19 @@ function saveManifest(modsDir, manifest) {
   } catch (e) {}
 }
 
-// Helper: Get next free pakXX number from 02 to 99 (never 01 which is reserved for base game)
+// Helper: Get next free pakXX number from 02 to 999 (never 01 which is reserved for base game)
 function getNextAvailablePakNumber(modsDir, manifest) {
   const existingFiles = fs.existsSync(modsDir) ? fs.readdirSync(modsDir) : [];
-  for (let i = 2; i <= 99; i++) {
+  for (let i = 2; i <= 999; i++) {
     const numStr = i < 10 ? `0${i}` : `${i}`;
     const pattern = new RegExp(`^pak${numStr}_dir\\.vpk`, 'i');
     const isFileOnDisk = existingFiles.some(f => pattern.test(f));
-    const isInManifest = manifest.mods.some(m => m.pakNumber === numStr);
+    const isInManifest = manifest && manifest.mods && manifest.mods.some(m => m.pakNumber === numStr);
     if (!isFileOnDisk && !isInManifest) {
       return numStr;
     }
   }
-  return '99';
+  return '100';
 }
 
 // Helper: Ensure game/dota is 100% ORIGINAL Valve files without any custom modifications
@@ -425,6 +438,77 @@ function copyFolderRecursive(src, dest) {
   }
 }
 
+// Helper: Safe unlink with retry on Windows to handle transient locks (antivirus, indexer)
+async function safeUnlink(filePath, maxRetries = 5, delayMs = 150) {
+  if (!filePath || !fs.existsSync(filePath)) return true;
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      fs.unlinkSync(filePath);
+      return true;
+    } catch (err) {
+      if ((err.code === 'EBUSY' || err.code === 'EPERM') && i < maxRetries - 1) {
+        await new Promise(r => setTimeout(r, delayMs * (i + 1)));
+      } else if (i === maxRetries - 1) {
+        try {
+          const trashPath = `${filePath}.del_${Date.now()}`;
+          fs.renameSync(filePath, trashPath);
+          setTimeout(() => { try { fs.unlinkSync(trashPath); } catch (e) {} }, 3000);
+          return true;
+        } catch (renameErr) {
+          return false;
+        }
+      } else {
+        return false;
+      }
+    }
+  }
+  return false;
+}
+
+// Helper: Safe copy file with Windows lock handling and retry
+async function safeCopyFile(src, dest, maxRetries = 4, delayMs = 150) {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      fs.copyFileSync(src, dest);
+      return true;
+    } catch (err) {
+      if ((err.code === 'EBUSY' || err.code === 'EPERM') && i < maxRetries - 1) {
+        try {
+          const trash = `${dest}.del_${Date.now()}`;
+          fs.renameSync(dest, trash);
+          setTimeout(() => { try { fs.unlinkSync(trash); } catch (e) {} }, 3000);
+          fs.copyFileSync(src, dest);
+          return true;
+        } catch (e) {}
+        await new Promise(r => setTimeout(r, delayMs * (i + 1)));
+      } else if (i === maxRetries - 1) {
+        throw err;
+      }
+    }
+  }
+  return false;
+}
+
+// Helper: Safe rename file on Windows with copy-fallback
+function safeRenameSync(src, dst) {
+  try {
+    if (fs.existsSync(dst)) {
+      try { fs.unlinkSync(dst); } catch (e) {}
+    }
+    fs.renameSync(src, dst);
+    return true;
+  } catch (e) {
+    if (e.code === 'EBUSY' || e.code === 'EPERM') {
+      try {
+        fs.copyFileSync(src, dst);
+        try { fs.unlinkSync(src); } catch (u) {}
+        return true;
+      } catch (ce) {}
+    }
+    throw e;
+  }
+}
+
 // Helper: Download with redirect support
 function downloadWithRedirect(url, targetPath, maxRedirects = 5) {
   return new Promise((resolve) => {
@@ -442,17 +526,20 @@ function downloadWithRedirect(url, targetPath, maxRedirects = 5) {
       const file = fs.createWriteStream(targetPath);
       response.pipe(file);
       file.on('finish', () => {
-        file.close();
-        resolve({ success: true });
+        file.close(() => {
+          resolve({ success: true });
+        });
       });
       file.on('error', (err) => {
-        fs.unlink(targetPath, () => {});
-        resolve({ success: false, message: err.message });
+        file.close(() => {
+          try { fs.unlinkSync(targetPath); } catch (e) {}
+          resolve({ success: false, message: err.message });
+        });
       });
     });
 
     req.on('error', (err) => {
-      fs.unlink(targetPath, () => {});
+      try { fs.unlinkSync(targetPath); } catch (e) {}
       resolve({ success: false, message: err.message });
     });
   });
@@ -595,6 +682,20 @@ ipcMain.handle('dota:enable-mods', async (event, dotaPath) => {
       message: `Безопасный режим модов активен! Моды монтируются через ${path.basename(modsDir)} без изменения системных файлов.` 
     };
   } catch (err) {
+    if (err.code === 'EBUSY' || (err.message && err.message.includes('EBUSY'))) {
+      const running = await isDotaRunning();
+      if (running) {
+        return {
+          success: false,
+          isDotaRunning: true,
+          message: 'Dota 2 сейчас запущена и заблокировала файлы игры! Закройте Dota 2 перед установкой или удалением модов.'
+        };
+      }
+      return {
+        success: false,
+        message: `Файл заблокирован другим процессом (${path.basename(err.path || 'pak_dir.vpk')}). Закройте Dota 2 или проводник и повторите попытку.`
+      };
+    }
     return { success: false, message: err.message };
   }
 });
@@ -608,13 +709,47 @@ ipcMain.handle('dota:repair-vac', async (event, dotaPath) => {
       message: 'Файлы игры полностью очищены и восстановлены! Папка game/dota чиста от посторонних файлов, gameinfo.gi оригинален, повреждённые файлы удалены. Защита VAC чиста.'
     };
   } catch (err) {
+    if (err.code === 'EBUSY' || (err.message && err.message.includes('EBUSY'))) {
+      const running = await isDotaRunning();
+      if (running) {
+        return {
+          success: false,
+          isDotaRunning: true,
+          message: 'Dota 2 сейчас запущена и заблокировала файлы игры! Закройте Dota 2 перед установкой или удалением модов.'
+        };
+      }
+      return {
+        success: false,
+        message: `Файл заблокирован другим процессом (${path.basename(err.path || 'pak_dir.vpk')}). Закройте Dota 2 или проводник и повторите попытку.`
+      };
+    }
     return { success: false, message: err.message };
   }
 });
 
+// Helper: Check if dota2.exe is running (files in game/dota_russian are locked during gameplay)
+function isDotaRunning() {
+  return new Promise((resolve) => {
+    exec('tasklist /FI "IMAGENAME eq dota2.exe" /NH', { timeout: 3000 }, (err, stdout) => {
+      if (!err && stdout && stdout.toLowerCase().includes('dota2.exe')) {
+        return resolve(true);
+      }
+      resolve(false);
+    });
+  });
+}
+
 // IPC Handler: One-click Download and Install Mod (VPK extraction with pakXX_dir naming)
 ipcMain.handle('dota:install-mod', async (event, { dotaPath, modId, modTitle, downloadUrl, preview, hero, heroIcon, category }) => {
   try {
+    if (await isDotaRunning()) {
+      return {
+        success: false,
+        isDotaRunning: true,
+        message: 'Dota 2 сейчас запущена! Игра заблокировала файлы модов. Закройте Dota 2 перед установкой, чтобы изменения применились.'
+      };
+    }
+
     const modsDir = getModsDirectory(dotaPath);
     restoreCleanGameInfo(dotaPath);
 
@@ -627,20 +762,37 @@ ipcMain.handle('dota:install-mod', async (event, { dotaPath, modId, modTitle, do
       if (pakNumStr === '01') pakNumStr = '02';
     }
 
-    const targetPakName = `pak${pakNumStr}_dir.vpk`;
-    const isZip = downloadUrl.toLowerCase().endsWith('.zip');
-    const tempDownload = path.join(modsDir, `__temp_dl_${pakNumStr}.${isZip ? 'zip' : 'vpk'}`);
+    let targetPakName = `pak${pakNumStr}_dir.vpk`;
+    let targetPakPath = path.join(modsDir, targetPakName);
+    let targetDisabledPath = path.join(modsDir, `${targetPakName}.disabled`);
 
-    const dlResult = await downloadWithRedirect(downloadUrl, tempDownload);
-    if (!dlResult || !dlResult.success) {
-      return { success: false, message: dlResult.message || 'Ошибка загрузки архива мода' };
+    // Proactive check: if target file exists and is locked by any process, allocate a fresh pak number
+    if (fs.existsSync(targetPakPath)) {
+      try {
+        const fd = fs.openSync(targetPakPath, 'r+');
+        fs.closeSync(fd);
+      } catch (lockErr) {
+        if (await isDotaRunning()) {
+          return {
+            success: false,
+            isDotaRunning: true,
+            message: 'Dota 2 сейчас запущена! Игра заблокировала файлы модов. Закройте Dota 2 перед установкой, чтобы изменения применились.'
+          };
+        }
+        pakNumStr = getNextAvailablePakNumber(modsDir, manifest);
+        targetPakName = `pak${pakNumStr}_dir.vpk`;
+        targetPakPath = path.join(modsDir, targetPakName);
+        targetDisabledPath = path.join(modsDir, `${targetPakName}.disabled`);
+      }
     }
 
-    const targetPakPath = path.join(modsDir, targetPakName);
-    const targetDisabledPath = path.join(modsDir, `${targetPakName}.disabled`);
+    const isZip = downloadUrl.toLowerCase().endsWith('.zip');
+    const tempDownload = path.join(modsDir, `__temp_dl_${pakNumStr}_${Date.now()}.${isZip ? 'zip' : 'vpk'}`);
+    let sourceVpkPath = null;
+    let extractDir = null;
 
     if (isZip) {
-      const extractDir = path.join(modsDir, `__temp_ex_${pakNumStr}`);
+      extractDir = path.join(modsDir, `__temp_ex_${pakNumStr}_${Date.now()}`);
       if (!fs.existsSync(extractDir)) fs.mkdirSync(extractDir, { recursive: true });
 
       await extractArchive(tempDownload, extractDir);
@@ -720,15 +872,41 @@ ipcMain.handle('dota:install-mod', async (event, { dotaPath, modId, modTitle, do
         return { success: false, message: 'В архиве мода не найден файл .vpk' };
       }
 
-      if (fs.existsSync(targetPakPath)) fs.unlinkSync(targetPakPath);
-      if (fs.existsSync(targetDisabledPath)) fs.unlinkSync(targetDisabledPath);
-
-      fs.renameSync(vpks[0], targetPakPath);
-      try { fs.rmSync(extractDir, { recursive: true, force: true }); } catch (e) {}
+      sourceVpkPath = vpks[0];
     } else {
-      if (fs.existsSync(targetPakPath)) fs.unlinkSync(targetPakPath);
-      if (fs.existsSync(targetDisabledPath)) fs.unlinkSync(targetDisabledPath);
-      fs.renameSync(tempDownload, targetPakPath);
+      sourceVpkPath = tempDownload;
+    }
+
+    // Windows-safe installation: safeCopyFile with dynamic allocation fallback
+    try {
+      await safeUnlink(targetDisabledPath);
+      await safeCopyFile(sourceVpkPath, targetPakPath);
+    } catch (installErr) {
+      if (await isDotaRunning()) {
+        if (extractDir) { try { fs.rmSync(extractDir, { recursive: true, force: true }); } catch (e) {} }
+        try { fs.unlinkSync(tempDownload); } catch (e) {}
+        return {
+          success: false,
+          isDotaRunning: true,
+          message: 'Dota 2 сейчас запущена и заблокировала файлы игры! Закройте Dota 2 перед установкой модов.'
+        };
+      }
+
+      // If initial target was locked by another process, allocate a guaranteed free pak number
+      const fallbackNum = getNextAvailablePakNumber(modsDir, manifest);
+      pakNumStr = fallbackNum;
+      targetPakName = `pak${pakNumStr}_dir.vpk`;
+      targetPakPath = path.join(modsDir, targetPakName);
+      targetDisabledPath = path.join(modsDir, `${targetPakName}.disabled`);
+      await safeUnlink(targetDisabledPath);
+      await safeCopyFile(sourceVpkPath, targetPakPath);
+    }
+
+    if (extractDir) {
+      try { fs.rmSync(extractDir, { recursive: true, force: true }); } catch (e) {}
+    }
+    if (!isZip) {
+      try { fs.unlinkSync(tempDownload); } catch (e) {}
     }
 
     // Sanitize VPK: strip dangerous engine overrides (materials/default, materials/engine)
@@ -837,6 +1015,20 @@ ipcMain.handle('dota:install-mod', async (event, { dotaPath, modId, modTitle, do
       message: `Мод «${modTitle}» успешно установлен как ${targetPakName}! Он сразу активен в игре.` 
     };
   } catch (err) {
+    if (err.code === 'EBUSY' || (err.message && err.message.includes('EBUSY'))) {
+      const running = await isDotaRunning();
+      if (running) {
+        return {
+          success: false,
+          isDotaRunning: true,
+          message: 'Dota 2 сейчас запущена и заблокировала файлы игры! Закройте Dota 2 перед установкой или удалением модов.'
+        };
+      }
+      return {
+        success: false,
+        message: `Файл заблокирован другим процессом (${path.basename(err.path || 'pak_dir.vpk')}). Закройте Dota 2 или проводник и повторите попытку.`
+      };
+    }
     return { success: false, message: err.message };
   }
 });
@@ -918,10 +1110,15 @@ ipcMain.handle('dota:list-installed-mods', async (event, dotaPath) => {
 
 // IPC Handler: Check if dota2.exe is running
 ipcMain.handle('dota:check-status', async () => {
+  const isRunning = await isDotaRunning();
+  return { success: true, isRunning };
+});
+
+// IPC Handler: Force close dota2.exe to release locked files
+ipcMain.handle('dota:close-game', async () => {
   return new Promise((resolve) => {
-    exec('tasklist /FI "IMAGENAME eq dota2.exe" /NH', (err, stdout) => {
-      const isRunning = Boolean(stdout && stdout.toLowerCase().includes('dota2.exe'));
-      resolve({ success: true, isRunning });
+    exec('taskkill /F /IM dota2.exe', (err) => {
+      resolve({ success: !err });
     });
   });
 });
@@ -929,6 +1126,13 @@ ipcMain.handle('dota:check-status', async () => {
 // IPC Handler: Toggle Single Mod (Enable / Disable)
 ipcMain.handle('dota:toggle-mod', async (event, { dotaPath, fileName, enable }) => {
   try {
+    if (await isDotaRunning()) {
+      return {
+        success: false,
+        isDotaRunning: true,
+        message: 'Dota 2 сейчас запущена! Закройте игру перед включением или отключением модов.'
+      };
+    }
     const modsDir = getModsDirectory(dotaPath);
     const manifest = loadManifest(modsDir);
 
@@ -974,12 +1178,12 @@ ipcMain.handle('dota:toggle-mod', async (event, { dotaPath, fileName, enable }) 
 
     if (enable) {
       if (fs.existsSync(disabledPath)) {
-        fs.renameSync(disabledPath, activePath);
+        safeRenameSync(disabledPath, activePath);
         newFileName = activeName;
       }
     } else {
       if (fs.existsSync(activePath)) {
-        fs.renameSync(activePath, disabledPath);
+        safeRenameSync(activePath, disabledPath);
         newFileName = disabledName;
       }
     }
@@ -1023,6 +1227,20 @@ ipcMain.handle('dota:toggle-mod', async (event, { dotaPath, fileName, enable }) 
 
     return { success: true, newFileName };
   } catch (err) {
+    if (err.code === 'EBUSY' || (err.message && err.message.includes('EBUSY'))) {
+      const running = await isDotaRunning();
+      if (running) {
+        return {
+          success: false,
+          isDotaRunning: true,
+          message: 'Dota 2 сейчас запущена и заблокировала файлы игры! Закройте Dota 2 перед установкой или удалением модов.'
+        };
+      }
+      return {
+        success: false,
+        message: `Файл заблокирован другим процессом (${path.basename(err.path || 'pak_dir.vpk')}). Закройте Dota 2 или проводник и повторите попытку.`
+      };
+    }
     return { success: false, message: err.message };
   }
 });
@@ -1092,6 +1310,20 @@ ipcMain.handle('dota:disable-all-mods', async (event, dotaPath) => {
 
     return { success: true, count: disabledCount };
   } catch (err) {
+    if (err.code === 'EBUSY' || (err.message && err.message.includes('EBUSY'))) {
+      const running = await isDotaRunning();
+      if (running) {
+        return {
+          success: false,
+          isDotaRunning: true,
+          message: 'Dota 2 сейчас запущена и заблокировала файлы игры! Закройте Dota 2 перед установкой или удалением модов.'
+        };
+      }
+      return {
+        success: false,
+        message: `Файл заблокирован другим процессом (${path.basename(err.path || 'pak_dir.vpk')}). Закройте Dota 2 или проводник и повторите попытку.`
+      };
+    }
     return { success: false, message: err.message };
   }
 });
@@ -1163,6 +1395,20 @@ ipcMain.handle('dota:enable-all-mods', async (event, dotaPath) => {
 
     return { success: true, count: enabledCount };
   } catch (err) {
+    if (err.code === 'EBUSY' || (err.message && err.message.includes('EBUSY'))) {
+      const running = await isDotaRunning();
+      if (running) {
+        return {
+          success: false,
+          isDotaRunning: true,
+          message: 'Dota 2 сейчас запущена и заблокировала файлы игры! Закройте Dota 2 перед установкой или удалением модов.'
+        };
+      }
+      return {
+        success: false,
+        message: `Файл заблокирован другим процессом (${path.basename(err.path || 'pak_dir.vpk')}). Закройте Dota 2 или проводник и повторите попытку.`
+      };
+    }
     return { success: false, message: err.message };
   }
 });
@@ -1170,6 +1416,13 @@ ipcMain.handle('dota:enable-all-mods', async (event, dotaPath) => {
 // IPC Handler: Delete All Mods
 ipcMain.handle('dota:delete-all-mods', async (event, dotaPath) => {
   try {
+    if (await isDotaRunning()) {
+      return {
+        success: false,
+        isDotaRunning: true,
+        message: 'Dota 2 сейчас запущена! Закройте игру перед удалением модов, чтобы разблокировать файлы.'
+      };
+    }
     const modsDir = getModsDirectory(dotaPath);
     const manifest = loadManifest(modsDir);
 
@@ -1207,6 +1460,20 @@ ipcMain.handle('dota:delete-all-mods', async (event, dotaPath) => {
 
     return { success: true, count: deletedCount };
   } catch (err) {
+    if (err.code === 'EBUSY' || (err.message && err.message.includes('EBUSY'))) {
+      const running = await isDotaRunning();
+      if (running) {
+        return {
+          success: false,
+          isDotaRunning: true,
+          message: 'Dota 2 сейчас запущена и заблокировала файлы игры! Закройте Dota 2 перед установкой или удалением модов.'
+        };
+      }
+      return {
+        success: false,
+        message: `Файл заблокирован другим процессом (${path.basename(err.path || 'pak_dir.vpk')}). Закройте Dota 2 или проводник и повторите попытку.`
+      };
+    }
     return { success: false, message: err.message };
   }
 });
@@ -1214,6 +1481,13 @@ ipcMain.handle('dota:delete-all-mods', async (event, dotaPath) => {
 // IPC Handler: Delete Mod
 ipcMain.handle('dota:delete-mod', async (event, { dotaPath, fileName, modId, modTitle }) => {
   try {
+    if (await isDotaRunning()) {
+      return {
+        success: false,
+        isDotaRunning: true,
+        message: 'Dota 2 сейчас запущена! Закройте игру перед удалением мода, чтобы разблокировать файлы.'
+      };
+    }
     const modsDir = getModsDirectory(dotaPath);
     const manifest = loadManifest(modsDir);
 
@@ -1261,16 +1535,16 @@ ipcMain.handle('dota:delete-mod', async (event, { dotaPath, fileName, modId, mod
     if (actualFileName) {
       const activePath = path.join(modsDir, actualFileName);
       const disabledPath = path.join(modsDir, actualFileName.endsWith('.disabled') ? actualFileName : actualFileName + '.disabled');
-      if (fs.existsSync(activePath)) { try { fs.unlinkSync(activePath); } catch (e) {} }
-      if (fs.existsSync(disabledPath)) { try { fs.unlinkSync(disabledPath); } catch (e) {} }
+      if (fs.existsSync(activePath)) { await safeUnlink(activePath); }
+      if (fs.existsSync(disabledPath)) { await safeUnlink(disabledPath); }
     }
 
     // Delete loose files associated with this mod
     if (entry && Array.isArray(entry.looseFiles)) {
       for (const filePath of entry.looseFiles) {
-        if (fs.existsSync(filePath)) { try { fs.unlinkSync(filePath); } catch (e) {} }
+        if (fs.existsSync(filePath)) { await safeUnlink(filePath); }
         const disabledFile = filePath + '.disabled';
-        if (fs.existsSync(disabledFile)) { try { fs.unlinkSync(disabledFile); } catch (e) {} }
+        if (fs.existsSync(disabledFile)) { await safeUnlink(disabledFile); }
       }
     }
 
@@ -1291,14 +1565,28 @@ ipcMain.handle('dota:delete-mod', async (event, { dotaPath, fileName, modId, mod
         try {
           const mirActive = path.join(mirrorDir, actualFileName);
           const mirDisabled = path.join(mirrorDir, actualFileName.endsWith('.disabled') ? actualFileName : actualFileName + '.disabled');
-          if (fs.existsSync(mirActive)) fs.unlinkSync(mirActive);
-          if (fs.existsSync(mirDisabled)) fs.unlinkSync(mirDisabled);
+          if (fs.existsSync(mirActive)) await safeUnlink(mirActive);
+          if (fs.existsSync(mirDisabled)) await safeUnlink(mirDisabled);
         } catch (e) {}
       }
     }
 
     return { success: true, message: 'Мод успешно удален!' };
   } catch (err) {
+    if (err.code === 'EBUSY' || (err.message && err.message.includes('EBUSY'))) {
+      const running = await isDotaRunning();
+      if (running) {
+        return {
+          success: false,
+          isDotaRunning: true,
+          message: 'Dota 2 сейчас запущена и заблокировала файлы игры! Закройте Dota 2 перед установкой или удалением модов.'
+        };
+      }
+      return {
+        success: false,
+        message: `Файл заблокирован другим процессом (${path.basename(err.path || 'pak_dir.vpk')}). Закройте Dota 2 или проводник и повторите попытку.`
+      };
+    }
     return { success: false, message: err.message };
   }
 });
@@ -1434,6 +1722,20 @@ ipcMain.handle('steam:get-user', async () => {
       dotaConfigsPath
     };
   } catch (err) {
+    if (err.code === 'EBUSY' || (err.message && err.message.includes('EBUSY'))) {
+      const running = await isDotaRunning();
+      if (running) {
+        return {
+          success: false,
+          isDotaRunning: true,
+          message: 'Dota 2 сейчас запущена и заблокировала файлы игры! Закройте Dota 2 перед установкой или удалением модов.'
+        };
+      }
+      return {
+        success: false,
+        message: `Файл заблокирован другим процессом (${path.basename(err.path || 'pak_dir.vpk')}). Закройте Dota 2 или проводник и повторите попытку.`
+      };
+    }
     return { success: false, message: err.message };
   }
 });
@@ -1470,6 +1772,20 @@ ipcMain.handle('steam:apply-configs', async (event, { dotaPath, steamId3 }) => {
       message: 'Все пользовательские конфиги Dota 2 успешно применены!'
     };
   } catch (err) {
+    if (err.code === 'EBUSY' || (err.message && err.message.includes('EBUSY'))) {
+      const running = await isDotaRunning();
+      if (running) {
+        return {
+          success: false,
+          isDotaRunning: true,
+          message: 'Dota 2 сейчас запущена и заблокировала файлы игры! Закройте Dota 2 перед установкой или удалением модов.'
+        };
+      }
+      return {
+        success: false,
+        message: `Файл заблокирован другим процессом (${path.basename(err.path || 'pak_dir.vpk')}). Закройте Dota 2 или проводник и повторите попытку.`
+      };
+    }
     return { success: false, message: err.message };
   }
 });

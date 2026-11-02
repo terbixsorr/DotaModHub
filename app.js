@@ -20,6 +20,173 @@ let currentModalModId = null;
 let currentPreviewList = [];
 let currentPreviewIndex = 0;
 
+// ==========================================
+// UNIFIED SKIN CATALOG (Single Source of Truth)
+// ==========================================
+window.SkinCatalog = (function() {
+  let _items = [];
+  const _byId = new Map();
+  const _aliases = new Map();
+  let _initialized = false;
+
+  function setAliases(aliases) {
+    if (!aliases || typeof aliases !== 'object') return;
+    Object.entries(aliases).forEach(([k, v]) => {
+      if (k && v) _aliases.set(String(k).trim(), String(v).trim());
+    });
+  }
+
+  function resolveId(id) {
+    if (!id) return null;
+    const str = String(id).trim();
+    return _aliases.get(str) || str;
+  }
+
+  function determineRarity(mod) {
+    if (mod.rarity) return mod.rarity;
+    const t = (mod.name || mod.title || '').toLowerCase();
+    const cat = (mod.category || '').toLowerCase();
+
+    if (t.includes('arcana')) return 'Arcana';
+    if (t.includes('immortal')) return 'Immortal';
+    if (t.includes('persona') || t.includes('личность')) return 'Persona';
+    if (cat === 'backgrounds' || cat === 'shaders') return 'Ancient';
+    if (cat === 'terrains' || cat === 'mega-kill' || cat === 'sounds' || cat === 'hero-sounds') return 'Legendary';
+    if (cat === 'couriers' || cat === 'wards' || cat === 'huds' || cat === 'herofx' || cat === 'attack-fx' || cat === 'high-five' || cat === 'creep-deny' || cat === 'fonts') return 'Rare';
+    return 'Mythical';
+  }
+
+  function normalizeItem(raw) {
+    if (!raw || typeof raw !== 'object') return null;
+    const id = String(raw.id || '').trim();
+    const name = String(raw.name || raw.title || '').trim();
+    const preview = String(raw.preview || '').trim();
+    const category = String(raw.category || 'heroes').trim();
+
+    if (!id || !name) return null;
+
+    const rarity = determineRarity(raw);
+
+    return {
+      ...raw,
+      id,
+      name,
+      title: name, // Guaranteed equality between .name and .title
+      preview: preview || 'assets/heroes/dota2_logo_symbol.png',
+      category,
+      rarity,
+      hero: raw.hero || 'Dota 2',
+      hero_icon: raw.hero_icon || 'assets/heroes/dota2_logo_symbol.png',
+      attribute: raw.attribute || 'universal',
+      download_url: raw.download_url || '',
+      file_size: raw.file_size || '35 MB',
+      is_recently_added: Boolean(raw.is_recently_added)
+    };
+  }
+
+  function validateCatalog(items) {
+    const report = { total: items.length, valid: 0, duplicates: 0, invalid: 0, missingPreview: 0, errors: [] };
+    const validList = [];
+    const seen = new Set();
+
+    items.forEach((item, idx) => {
+      const norm = normalizeItem(item);
+      if (!norm) {
+        report.invalid++;
+        report.errors.push(`Skin at index ${idx} is missing ID or Name`);
+        return;
+      }
+      if (seen.has(norm.id)) {
+        report.duplicates++;
+        report.errors.push(`Duplicate skin ID: "${norm.id}" at index ${idx}`);
+        return;
+      }
+      if (!norm.preview || norm.preview.length < 5) {
+        report.missingPreview++;
+        report.errors.push(`Missing preview for skin: "${norm.name}" (${norm.id})`);
+      }
+      seen.add(norm.id);
+      validList.push(norm);
+      report.valid++;
+    });
+
+    if (report.errors.length > 0) {
+      console.warn(`[SkinCatalog] Integrity check completed with warnings:`, report);
+    } else {
+      console.info(`[SkinCatalog] Integrity check passed: ${report.valid} skins cleanly indexed from single source.`);
+    }
+
+    return validList;
+  }
+
+  function init(items, aliases) {
+    if (aliases) {
+      setAliases(aliases);
+    } else if (typeof window !== 'undefined' && window.CATALOG_ALIASES) {
+      setAliases(window.CATALOG_ALIASES);
+    }
+    _items = validateCatalog(Array.isArray(items) ? items : []);
+    _byId.clear();
+    _items.forEach(item => {
+      _byId.set(item.id, item);
+    });
+    _initialized = true;
+    allMods = _items;
+    window.allMods = _items;
+    window.MODS_DATA = _items;
+    window.CATALOG_MODS = _items;
+    return _items;
+  }
+
+  function getAll() {
+    return _items;
+  }
+
+  function getById(id) {
+    if (!id) return null;
+    const str = String(id).trim();
+    const resolved = _aliases.get(str) || str;
+    return _byId.get(resolved) || _byId.get(str) || null;
+  }
+
+  function getOrFind(idOrMatch) {
+    if (!idOrMatch) return null;
+    if (typeof idOrMatch === 'object' && idOrMatch.id) {
+      return getById(idOrMatch.id) || idOrMatch;
+    }
+    const str = String(idOrMatch).trim();
+    const found = getById(str);
+    if (found) return found;
+    // Fallback: search by name or preview
+    const s = str.toLowerCase();
+    return _items.find(m => (m.name && m.name.toLowerCase() === s) || (m.preview && m.preview.toLowerCase() === s)) || null;
+  }
+
+  function updateSkin(id, partial) {
+    const skin = getById(id);
+    if (!skin) return null;
+    Object.assign(skin, partial);
+    if (partial.name) skin.title = partial.name;
+    if (partial.title) skin.name = partial.title;
+    return skin;
+  }
+
+  return {
+    init,
+    getAll,
+    getById,
+    getOrFind,
+    resolveId,
+    setAliases,
+    updateSkin,
+    normalizeItem,
+    validateCatalog,
+    get count() { return _items.length; },
+    get isInitialized() { return _initialized; }
+  };
+})();
+
+
 // Non-hero entities that should NOT appear under "Герои Dota 2"
 const NON_HERO_ENTITIES = new Set([
   'Aegis', 'Aghanim Aura', 'Announcer', 'Attack FX', 'Backgrounds', 'Blade Mail', 'Blink Dagger', 
@@ -1675,16 +1842,19 @@ try {
 
 window.isModInstalled = function(modOrId) {
   if (!modOrId) return false;
-  const modId = typeof modOrId === 'string' ? modOrId : (modOrId.id || '');
+  const rawId = typeof modOrId === 'string' ? modOrId : (modOrId.id || '');
+  const modId = (window.SkinCatalog && window.SkinCatalog.resolveId) ? window.SkinCatalog.resolveId(rawId) : rawId;
   const modTitle = typeof modOrId === 'object' ? (modOrId.title || '') : '';
   const cleanTitle = (modTitle || '').toLowerCase().trim();
 
-  if (modId && window.installedModIdsSet && window.installedModIdsSet.has(modId)) return true;
+  if (modId && window.installedModIdsSet && (window.installedModIdsSet.has(modId) || window.installedModIdsSet.has(rawId))) return true;
   if (modTitle && window.installedModIdsSet && window.installedModIdsSet.has(modTitle)) return true;
 
   if (Array.isArray(window.installedModsList) && window.installedModsList.length > 0) {
     return window.installedModsList.some(m => {
-      if (m.id && m.id === modId) return true;
+      const mRaw = m.id || '';
+      const mId = (window.SkinCatalog && window.SkinCatalog.resolveId) ? window.SkinCatalog.resolveId(mRaw) : mRaw;
+      if (mId && (mId === modId || mRaw === rawId || mId === rawId || mRaw === modId)) return true;
       const mClean = (m.cleanName || m.title || '').toLowerCase().trim();
       if (cleanTitle && (mClean === cleanTitle || cleanTitle.includes(mClean) || mClean.includes(cleanTitle))) return true;
       return false;
@@ -1727,6 +1897,9 @@ window.refreshInstalledModsState = async function() {
 };
 
 window.updateInstalledModButtonsInDOM = function() {
+  const isEn = (window.currentAppLanguage === 'en');
+
+  // 1. Regular catalog cards
   const cards = document.querySelectorAll('.mod-card');
   cards.forEach(card => {
     const prevBtn = card.querySelector("button[onclick*='openModDetail']");
@@ -1737,39 +1910,42 @@ window.updateInstalledModButtonsInDOM = function() {
         const isInstalled = window.isModInstalled(modId);
         const actionBtn = card.querySelector("button[onclick*='installModDirectly'], button[onclick*='uninstallModDirectly']");
         let badge = card.querySelector('.installed-mod-badge');
+        const modObj = (window.SkinCatalog && window.SkinCatalog.getById ? window.SkinCatalog.getById(modId) : null) || (window.allMods || []).find(x => x.id === modId);
+        const modTitle = modObj ? (modObj.title || '').replace(/'/g, "\\'") : '';
+        const dlUrl = modObj ? (modObj.download_url || '#') : '#';
         
         if (isInstalled) {
           card.classList.add('border-emerald-500/30');
           if (actionBtn) {
-            actionBtn.setAttribute('onclick', `uninstallModDirectly('${modId}', '', this)`);
+            actionBtn.setAttribute('onclick', `uninstallModDirectly('${modId}', '${modTitle}', this)`);
             actionBtn.className = "group/delBtn flex-1 py-2 px-2.5 rounded-xl bg-emerald-600/20 hover:bg-rose-600/25 text-emerald-300 hover:text-rose-200 border border-emerald-500/35 hover:border-rose-500/50 text-xs font-semibold text-center transition-all flex items-center justify-center space-x-1.5 shadow-sm active:scale-95";
-            actionBtn.innerHTML = `<i class="fa-solid fa-check text-[10px] text-emerald-300 group-hover/delBtn:hidden"></i><i class="fa-solid fa-trash-can text-[10px] text-rose-300 hidden group-hover/delBtn:inline"></i><span class="group-hover/delBtn:hidden">Установлен</span><span class="hidden group-hover/delBtn:inline">Удалить</span>`;
-            actionBtn.title = "Нажмите, чтобы удалить мод";
+            actionBtn.innerHTML = `<i class="fa-solid fa-check text-[10px] text-emerald-300 group-hover/delBtn:hidden"></i><i class="fa-solid fa-trash-can text-[10px] text-rose-300 hidden group-hover/delBtn:inline"></i><span class="group-hover/delBtn:hidden">${isEn ? 'Installed' : 'Установлен'}</span><span class="hidden group-hover/delBtn:inline">${isEn ? 'Uninstall' : 'Удалить'}</span>`;
+            actionBtn.title = isEn ? "Click to uninstall mod" : "Нажмите, чтобы удалить мод";
+            actionBtn.disabled = false;
           }
           if (!badge) {
             const imgWrapper = card.querySelector('.card-img-wrapper');
             if (imgWrapper) {
-              const bHtml = `<div class="installed-mod-badge absolute bottom-2.5 right-2.5 z-10 px-2 py-0.5 rounded-lg bg-emerald-950/90 text-emerald-300 border border-emerald-500/40 text-[10px] font-bold flex items-center gap-1 shadow-md shadow-emerald-950/40 backdrop-blur-sm"><i class="fa-solid fa-circle-check text-[9px] text-emerald-400"></i><span>В игре</span></div>`;
+              const bHtml = `<div class="installed-mod-badge absolute bottom-2.5 right-2.5 z-10 px-2 py-0.5 rounded-lg bg-emerald-950/90 text-emerald-300 border border-emerald-500/40 text-[10px] font-bold flex items-center gap-1 shadow-md shadow-emerald-950/40 backdrop-blur-sm"><i class="fa-solid fa-circle-check text-[9px] text-emerald-400"></i><span>${isEn ? 'In Game' : 'В игре'}</span></div>`;
               imgWrapper.insertAdjacentHTML('beforeend', bHtml);
             }
           }
         } else {
           card.classList.remove('border-emerald-500/30');
           if (badge) badge.remove();
-          if (actionBtn && actionBtn.getAttribute('onclick') && actionBtn.getAttribute('onclick').includes('uninstallModDirectly')) {
-            const modObj = (window.allMods || []).find(x => x.id === modId);
-            const dlUrl = modObj ? modObj.download_url : '#';
-            const modTitle = modObj ? (modObj.title || '').replace(/'/g, "\\'") : '';
+          if (actionBtn) {
             actionBtn.setAttribute('onclick', `installModDirectly('${modId}', '${modTitle}', '${dlUrl}', this)`);
             actionBtn.className = "btn-shimmer flex-1 py-2 px-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold text-center transition-all flex items-center justify-center space-x-1.5 shadow-sm shadow-indigo-600/20 active:scale-95";
-            actionBtn.innerHTML = `<i class="fa-solid fa-download text-[10px]"></i><span>Скачать</span>`;
-            actionBtn.title = "Установить мод";
+            actionBtn.innerHTML = `<i class="fa-solid fa-download text-[10px]"></i><span>${isEn ? 'Download' : 'Скачать'}</span>`;
+            actionBtn.title = isEn ? "Download and install mod" : "Установить мод";
+            actionBtn.disabled = false;
           }
         }
       }
     }
   });
 
+  // 2. Catalog list rows
   const rows = document.querySelectorAll('.mod-list-row');
   rows.forEach(row => {
     const prevBtn = row.querySelector("button[onclick*='openModDetail']");
@@ -1779,25 +1955,112 @@ window.updateInstalledModButtonsInDOM = function() {
         const modId = m[1];
         const isInstalled = window.isModInstalled(modId);
         const actionBtn = row.querySelector("button[onclick*='installModDirectly'], button[onclick*='uninstallModDirectly']");
+        const modObj = (window.SkinCatalog && window.SkinCatalog.getById ? window.SkinCatalog.getById(modId) : null) || (window.allMods || []).find(x => x.id === modId);
+        const modTitle = modObj ? (modObj.title || '').replace(/'/g, "\\'") : '';
+        const dlUrl = modObj ? (modObj.download_url || '#') : '#';
+
         if (isInstalled && actionBtn) {
           row.classList.add('border-emerald-500/30');
-          actionBtn.setAttribute('onclick', `uninstallModDirectly('${modId}', '', this)`);
+          actionBtn.setAttribute('onclick', `uninstallModDirectly('${modId}', '${modTitle}', this)`);
           actionBtn.className = "group/delBtn px-3.5 py-1.5 rounded-xl bg-emerald-600/20 hover:bg-rose-600/25 text-emerald-300 hover:text-rose-200 border border-emerald-500/35 hover:border-rose-500/50 text-xs font-semibold transition-all flex items-center space-x-1.5 shadow-sm active:scale-95";
-          actionBtn.innerHTML = `<i class="fa-solid fa-check text-[10px] text-emerald-300 group-hover/delBtn:hidden"></i><i class="fa-solid fa-trash-can text-[10px] text-rose-300 hidden group-hover/delBtn:inline"></i><span class="group-hover/delBtn:hidden">Установлен</span><span class="hidden group-hover/delBtn:inline">Удалить</span>`;
-          actionBtn.title = "Нажмите, чтобы удалить мод";
-        } else if (!isInstalled && actionBtn && actionBtn.getAttribute('onclick') && actionBtn.getAttribute('onclick').includes('uninstallModDirectly')) {
+          actionBtn.innerHTML = `<i class="fa-solid fa-check text-[10px] text-emerald-300 group-hover/delBtn:hidden"></i><i class="fa-solid fa-trash-can text-[10px] text-rose-300 hidden group-hover/delBtn:inline"></i><span class="group-hover/delBtn:hidden">${isEn ? 'Installed' : 'Установлен'}</span><span class="hidden group-hover/delBtn:inline">${isEn ? 'Uninstall' : 'Удалить'}</span>`;
+          actionBtn.title = isEn ? "Click to uninstall mod" : "Нажмите, чтобы удалить мод";
+          actionBtn.disabled = false;
+        } else if (!isInstalled && actionBtn) {
           row.classList.remove('border-emerald-500/30');
-          const modObj = (window.allMods || []).find(x => x.id === modId);
-          const dlUrl = modObj ? modObj.download_url : '#';
-          const modTitle = modObj ? (modObj.title || '').replace(/'/g, "\\'") : '';
           actionBtn.setAttribute('onclick', `installModDirectly('${modId}', '${modTitle}', '${dlUrl}', this)`);
           actionBtn.className = "btn-shimmer px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-sm shadow-indigo-600/20 transition-all flex items-center space-x-1.5 active:scale-95";
-          actionBtn.innerHTML = `<i class="fa-solid fa-download text-[10px]"></i><span>Скачать</span>`;
-          actionBtn.title = "Скачать и установить мод";
+          actionBtn.innerHTML = `<i class="fa-solid fa-download text-[10px]"></i><span>${isEn ? 'Download' : 'Скачать'}</span>`;
+          actionBtn.title = isEn ? "Download and install mod" : "Скачать и установить мод";
+          actionBtn.disabled = false;
         }
       }
     }
   });
+
+  // 3. Favorites cards (.fav-card)
+  const favCards = document.querySelectorAll('.fav-card');
+  favCards.forEach(card => {
+    let modId = card.getAttribute('data-mod-id');
+    if (!modId) {
+      const prevBtn = card.querySelector("button[onclick*='openModDetail'], h4[onclick*='openModDetail']");
+      if (prevBtn) {
+        const m = prevBtn.getAttribute('onclick').match(/openModDetail\(['"]([^'"]+)['"]\)/);
+        if (m && m[1]) modId = m[1];
+      }
+    }
+    if (modId) {
+      const isInstalled = window.isModInstalled(modId);
+      const actionBtn = card.querySelector("button[onclick*='installModDirectly'], button[onclick*='uninstallModDirectly'], button[onclick*='handleModInstall']");
+      let badge = card.querySelector('.installed-mod-badge');
+      const modObj = (window.SkinCatalog && window.SkinCatalog.getById ? window.SkinCatalog.getById(modId) : null) || (window.allMods || []).find(x => x.id === modId);
+      const cleanTitle = modObj ? (modObj.title || '').replace(/'/g, "\\'") : '';
+      const dlUrl = modObj ? (modObj.download_url || '#') : '#';
+
+      if (isInstalled) {
+        card.classList.add('border-emerald-500/30');
+        if (actionBtn) {
+          actionBtn.setAttribute('onclick', `event.stopPropagation(); uninstallModDirectly('${modId}', '${cleanTitle}', this)`);
+          actionBtn.className = "group/delBtn flex-1 py-1.5 px-2.5 rounded-xl bg-emerald-600/20 hover:bg-rose-600/25 text-emerald-300 hover:text-rose-200 border border-emerald-500/35 hover:border-rose-500/50 text-xs font-semibold text-center transition-all flex items-center justify-center space-x-1.5 shadow-sm active:scale-95";
+          actionBtn.innerHTML = `<i class="fa-solid fa-check text-[10px] text-emerald-300 group-hover/delBtn:hidden"></i><i class="fa-solid fa-trash-can text-[10px] text-rose-300 hidden group-hover/delBtn:inline"></i><span class="group-hover/delBtn:hidden">${isEn ? 'Installed' : 'Установлен'}</span><span class="hidden group-hover/delBtn:inline">${isEn ? 'Uninstall' : 'Удалить'}</span>`;
+          actionBtn.title = isEn ? "Click to uninstall mod" : "Нажмите, чтобы удалить мод";
+          actionBtn.disabled = false;
+        }
+        if (!badge) {
+          const imgWrapper = card.querySelector('.card-img-wrapper');
+          if (imgWrapper) {
+            const bHtml = `<div class="installed-mod-badge absolute bottom-2.5 right-2.5 z-10 px-2 py-0.5 rounded-lg bg-emerald-950/90 text-emerald-300 border border-emerald-500/40 text-[10px] font-bold flex items-center gap-1 shadow-md shadow-emerald-950/40 backdrop-blur-sm"><i class="fa-solid fa-circle-check text-[9px] text-emerald-400"></i><span>${isEn ? 'In Game' : 'В игре'}</span></div>`;
+            imgWrapper.insertAdjacentHTML('beforeend', bHtml);
+          }
+        }
+      } else {
+        card.classList.remove('border-emerald-500/30');
+        if (badge) badge.remove();
+        if (actionBtn) {
+          actionBtn.setAttribute('onclick', `event.stopPropagation(); installModDirectly('${modId}', '${cleanTitle}', '${dlUrl}', this)`);
+          actionBtn.className = "btn-shimmer flex-1 py-1.5 px-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold text-center transition-all flex items-center justify-center space-x-1.5 shadow-sm shadow-indigo-600/20 active:scale-95";
+          actionBtn.innerHTML = `<i class="fa-solid fa-download text-[10px]"></i><span>${isEn ? 'Download' : 'Скачать'}</span>`;
+          actionBtn.title = isEn ? "Download and install mod" : "Скачать и установить мод";
+          actionBtn.disabled = false;
+        }
+      }
+    }
+  });
+
+  // 4. Modal detail button if modal is open
+  if (typeof currentModalModId !== 'undefined' && currentModalModId) {
+    const dlBtn = document.getElementById('modalDownloadBtn');
+    if (dlBtn) {
+      const isInstalled = window.isModInstalled(currentModalModId);
+      const modObj = (window.SkinCatalog && window.SkinCatalog.getById ? window.SkinCatalog.getById(currentModalModId) : null) || (window.allMods || []).find(x => x.id === currentModalModId);
+      if (modObj) {
+        if (isInstalled) {
+          dlBtn.onclick = (e) => {
+            e.preventDefault();
+            window.uninstallModDirectly(modObj.id, modObj.title, dlBtn);
+          };
+          dlBtn.innerHTML = `<i class="fa-solid fa-check text-xs mr-1.5 text-emerald-300 group-hover/delBtn:hidden"></i><i class="fa-solid fa-trash-can text-xs mr-1.5 text-rose-300 hidden group-hover/delBtn:inline"></i> <span class="group-hover/delBtn:hidden text-emerald-300">${isEn ? 'Installed in Game' : 'Установлен в игру'}</span><span class="hidden group-hover/delBtn:inline text-rose-200">${isEn ? 'Uninstall Mod' : 'Удалить из игры'}</span>`;
+          dlBtn.className = "group/delBtn flex-1 py-3 px-4 rounded-xl bg-emerald-600/30 hover:bg-rose-600/30 text-emerald-300 hover:text-rose-200 border border-emerald-500/40 hover:border-rose-500/50 font-semibold text-sm transition-all flex items-center justify-center shadow-lg active:scale-95 cursor-pointer";
+          dlBtn.title = isEn ? "Click to uninstall mod" : "Нажмите, чтобы удалить мод из игры";
+          dlBtn.disabled = false;
+        } else {
+          dlBtn.onclick = (e) => {
+            if (window.dotaManager) {
+              e.preventDefault();
+              window.installModDirectly(modObj.id, modObj.title, modObj.download_url, dlBtn);
+            }
+          };
+          dlBtn.innerHTML = window.dotaManager 
+            ? `<i class="fa-solid fa-download text-xs mr-1.5"></i> ${isEn ? 'Install to Game' : 'Установить в игру'}` 
+            : `<i class="fa-solid fa-download text-xs mr-1.5"></i> ${isEn ? 'Download Archive' : 'Скачать архив'}`;
+          dlBtn.className = "flex-1 py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm transition-all flex items-center justify-center shadow-lg shadow-indigo-600/20";
+          dlBtn.title = isEn ? "Download and install mod into game" : "Скачать и установить мод в игру";
+          dlBtn.disabled = false;
+        }
+      }
+    }
+  }
+
   if (typeof renderRecentlyAdded === 'function') {
     renderRecentlyAdded();
   }
@@ -1826,29 +2089,38 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 async function loadModsData() {
-  let loadedFromFetch = null;
+  let sourceItems = null;
+
+  // 1. Try window.MODS_DATA / window.CATALOG_MODS (preloaded synchronously by script tag)
+  if (window.MODS_DATA && Array.isArray(window.MODS_DATA) && window.MODS_DATA.length > 0) {
+    sourceItems = window.MODS_DATA;
+  } else if (window.CATALOG_MODS && Array.isArray(window.CATALOG_MODS) && window.CATALOG_MODS.length > 0) {
+    sourceItems = window.CATALOG_MODS;
+  }
+
+  // 2. Try fetching data/mods.json
   try {
     const res = await fetch('data/mods.json');
     if (res.ok) {
       const data = await res.json();
       if (Array.isArray(data) && data.length > 0) {
-        loadedFromFetch = data;
+        if (!sourceItems || data.length >= sourceItems.length) {
+          sourceItems = data;
+        }
       }
     }
   } catch (err) {
-    console.warn('Локальный доступ: задействован кэш', err);
+    console.info('[SkinCatalog] Local fetch note:', err.message || err);
   }
 
-  if (loadedFromFetch && window.CATALOG_MODS && Array.isArray(window.CATALOG_MODS)) {
-    allMods = loadedFromFetch.length >= window.CATALOG_MODS.length ? loadedFromFetch : window.CATALOG_MODS;
-  } else if (loadedFromFetch) {
-    allMods = loadedFromFetch;
-  } else if (window.CATALOG_MODS && Array.isArray(window.CATALOG_MODS) && window.CATALOG_MODS.length > 0) {
-    allMods = window.CATALOG_MODS;
-  } else {
-    allMods = [...FALLBACK_CACHE];
+  // 3. Fallback cache if nothing else loaded
+  if (!sourceItems || sourceItems.length === 0) {
+    sourceItems = [...FALLBACK_CACHE];
   }
 
+  // Initialize unified catalog from single source
+  SkinCatalog.init(sourceItems);
+  allMods = SkinCatalog.getAll();
   window.allMods = allMods;
 
   if (typeof renderBgPresets === 'function') {
@@ -2011,7 +2283,7 @@ function renderRecentlyAdded() {
         data-mod-id="${mod.id}"
       >
         <div 
-          onclick="openImageLightbox('${mod.preview}', '${safeTitle}')" 
+          onclick="openImageLightbox('${mod.id}')" 
           class="w-16 h-16 sm:w-18 sm:h-18 rounded-2xl overflow-hidden bg-slate-900 shrink-0 relative mr-3 border border-white/10 shadow-md cursor-pointer group/img"
           title="${isEn ? 'Click image to enlarge' : 'Нажмите на изображение для увеличения'}"
         >
@@ -2020,7 +2292,7 @@ function renderRecentlyAdded() {
             alt="${mod.title}" 
             class="w-full h-full object-cover group-hover/img:scale-110 transition-transform duration-300" 
             loading="lazy"
-            onerror="this.src='assets/heroes/dota2_logo_symbol.png'"
+            onerror="this.onerror=null; if('${mod.remote_preview}') { this.src='${mod.remote_preview}'; } else { this.src='assets/heroes/dota2_logo_symbol.png'; }"
           >
           <span class="absolute top-1 left-1 px-1.5 py-0.5 rounded-md bg-emerald-500 text-white font-black text-[8px] shadow tracking-wider transition-opacity duration-300 ease-in-out group-hover:opacity-0 pointer-events-none">NEW</span>
           ${isInstalled ? `
@@ -2940,7 +3212,7 @@ window.isBackgroundVideo = function(mod) {
 };
 
 function createCardHTML(mod) {
-  const isFav = favorites.includes(mod.id);
+  const isFav = (typeof window.isModFavorite === 'function') ? window.isModFavorite(mod.id) : favorites.includes(mod.id);
   const isInstalled = window.isModInstalled ? window.isModInstalled(mod) : false;
   const isEn = (window.currentAppLanguage === 'en');
   const isBg = mod.category === 'backgrounds';
@@ -2993,6 +3265,19 @@ function createCardHTML(mod) {
 
         <!-- Badges -->
         <div class="absolute bottom-2.5 left-2.5 z-10 flex items-center space-x-1">
+
+          ${mod.rarity ? `
+            <span class="px-1.5 py-0.5 rounded-lg border text-[9px] font-bold ${
+              mod.rarity === 'Arcana' ? 'bg-purple-950/90 text-purple-300 border-purple-500/40' :
+              mod.rarity === 'Immortal' ? 'bg-amber-950/90 text-amber-300 border-amber-500/40' :
+              mod.rarity === 'Persona' ? 'bg-cyan-950/90 text-cyan-300 border-cyan-500/40' :
+              mod.rarity === 'Ancient' ? 'bg-orange-950/90 text-orange-300 border-orange-500/40' :
+              mod.rarity === 'Legendary' ? 'bg-pink-950/90 text-pink-300 border-pink-500/40' :
+              mod.rarity === 'Rare' ? 'bg-sky-950/90 text-sky-300 border-sky-500/40' :
+              'bg-indigo-950/90 text-indigo-300 border-indigo-500/40'
+            } shadow backdrop-blur-sm">${mod.rarity}</span>
+          ` : ''}
+  
           ${mod.is_recently_added ? `<span class="px-1.5 py-0.5 rounded-lg bg-emerald-500 text-white text-[9px] font-black shadow tracking-wider">NEW</span>` : ''}
           ${isBg ? `
             <span class="px-2 py-0.5 rounded-lg ${isBgVid ? 'bg-rose-950/90 text-rose-300 border-rose-500/40' : 'bg-sky-950/90 text-sky-300 border-sky-500/40'} border text-[10px] font-bold flex items-center gap-1 shadow-md backdrop-blur-sm">
@@ -3232,7 +3517,7 @@ function createItemListRowHTML(item) {
 }
 
 function createModListRowHTML(mod) {
-  const isFav = favorites.includes(mod.id);
+  const isFav = (typeof window.isModFavorite === 'function') ? window.isModFavorite(mod.id) : favorites.includes(mod.id);
   const isInstalled = window.isModInstalled ? window.isModInstalled(mod) : false;
   const isEn = (window.currentAppLanguage === 'en');
   const categoryTitle = getCategoryTitle(mod.category);
@@ -3405,11 +3690,28 @@ function getCategoryTitle(cat) {
   return map[cat] || (isEn ? 'Mod' : 'Мод');
 }
 
+window.isModFavorite = function(modId) {
+  if (!modId || !Array.isArray(favorites) || favorites.length === 0) return false;
+  const canonicalId = (window.SkinCatalog && window.SkinCatalog.resolveId) ? window.SkinCatalog.resolveId(modId) : modId;
+  return favorites.some(id => {
+    if (id === modId || id === canonicalId) return true;
+    const favCanonical = (window.SkinCatalog && window.SkinCatalog.resolveId) ? window.SkinCatalog.resolveId(id) : id;
+    return favCanonical === canonicalId;
+  });
+};
+
 window.toggleFavorite = function(modId) {
-  if (favorites.includes(modId)) {
-    favorites = favorites.filter(id => id !== modId);
+  if (!modId) return;
+  const canonicalId = (window.SkinCatalog && window.SkinCatalog.resolveId) ? window.SkinCatalog.resolveId(modId) : modId;
+  const idx = favorites.findIndex(id => {
+    if (id === modId || id === canonicalId) return true;
+    const favCanonical = (window.SkinCatalog && window.SkinCatalog.resolveId) ? window.SkinCatalog.resolveId(id) : id;
+    return favCanonical === canonicalId;
+  });
+  if (idx !== -1) {
+    favorites.splice(idx, 1);
   } else {
-    favorites.push(modId);
+    favorites.push(canonicalId);
   }
   localStorage.setItem('dotamod_favs', JSON.stringify(favorites));
   updateFavBadge();
@@ -3418,19 +3720,43 @@ window.toggleFavorite = function(modId) {
 
 function updateFavBadge() {
   if (favCountBadge) {
-    favCountBadge.textContent = favorites.length;
-    favCountBadge.style.display = favorites.length > 0 ? 'inline-flex' : 'none';
+    const uniqueCount = (favorites && Array.isArray(favorites))
+      ? new Set(favorites.map(id => (window.SkinCatalog && window.SkinCatalog.resolveId) ? window.SkinCatalog.resolveId(id) : id)).size
+      : 0;
+    favCountBadge.textContent = uniqueCount;
+    favCountBadge.style.display = uniqueCount > 0 ? 'inline-flex' : 'none';
   }
 }
 
 // Image Lightbox Functions (Pure expanded image view on clicking card pictures)
-window.openImageLightbox = function(src, title) {
+window.openImageLightbox = function(modOrIdOrSrc, fallbackTitle) {
   const modal = document.getElementById('imageLightboxModal');
   const img = document.getElementById('imageLightboxImg');
   const titleEl = document.getElementById('imageLightboxTitle');
   const fullLink = document.getElementById('imageLightboxFullLink');
 
   if (!modal || !img) return;
+
+  let mod = null;
+  let src = '';
+  let title = '';
+
+  if (typeof modOrIdOrSrc === 'object' && modOrIdOrSrc !== null) {
+    mod = modOrIdOrSrc;
+  } else if (typeof modOrIdOrSrc === 'string') {
+    mod = SkinCatalog.getById(modOrIdOrSrc) || (window.allMods || []).find(m => m.id === modOrIdOrSrc);
+    if (!mod) {
+      mod = SkinCatalog.getOrFind(modOrIdOrSrc);
+    }
+  }
+
+  if (mod) {
+    src = mod.preview;
+    title = mod.name || mod.title;
+  } else {
+    src = String(modOrIdOrSrc || '');
+    title = fallbackTitle || (window.currentAppLanguage === 'en' ? 'Skin Preview' : 'Изображение скина');
+  }
 
   img.src = src;
   img.style.transform = 'scale(1)';
@@ -3439,15 +3765,15 @@ window.openImageLightbox = function(src, title) {
   isLightboxZoomed = false;
 
   img.onerror = () => {
-    const matched = (window.allMods || []).find(m => m.preview === src || m.title === title);
-    if (matched && matched.remote_preview && img.src !== matched.remote_preview) {
-      img.src = matched.remote_preview;
+    img.onerror = null;
+    if (mod && mod.remote_preview && img.src !== mod.remote_preview) {
+      img.src = mod.remote_preview;
     } else {
       img.src = 'assets/heroes/dota2_logo_symbol.png';
     }
   };
 
-  if (titleEl) titleEl.textContent = title || 'Изображение скина';
+  if (titleEl) titleEl.textContent = title;
   if (fullLink) fullLink.href = src;
 
   modal.classList.remove('hidden');
@@ -3875,7 +4201,7 @@ function updateAudioUI(isPlaying, sample = null) {
 
 // Modal Details & Interactive Preview (Opens on [Превью] button)
 window.openModDetail = function(id) {
-  const mod = allMods.find(m => m.id === id);
+  const mod = (window.SkinCatalog ? window.SkinCatalog.getById(id) : null) || allMods.find(m => m.id === id);
   if (!mod) return;
 
   currentModalModId = id;
@@ -4158,7 +4484,7 @@ window.openModDetail = function(id) {
   if (imgEl) {
     imgEl.src = mod.preview;
     imgEl.title = 'Нажмите на изображение для увеличения';
-    imgEl.onclick = () => openImageLightbox(imgEl.src || mod.preview, mod.title);
+    imgEl.onclick = () => openImageLightbox(mod.id);
     imgEl.onerror = () => {
       if (mod.remote_preview && imgEl.src !== mod.remote_preview) {
         imgEl.src = mod.remote_preview;
@@ -4252,7 +4578,7 @@ window.navigatePreview = function(direction) {
 function updateModalFavBtn(modId) {
   const btn = document.getElementById('modalFavBtn');
   if (!btn) return;
-  const isFav = favorites.includes(modId);
+  const isFav = (typeof window.isModFavorite === 'function') ? window.isModFavorite(modId) : favorites.includes(modId);
   btn.innerHTML = isFav
     ? '<i class="fa-solid fa-heart text-red-500"></i><span class="hidden sm:inline">В избранном</span>'
     : '<i class="fa-regular fa-heart"></i><span class="hidden sm:inline">Избранное</span>';
@@ -4610,7 +4936,15 @@ window.openFavModal = function() {
   const favModal = document.getElementById('favModal');
   const favContainer = document.getElementById('favList');
   const favBadge = document.getElementById('favModalBadge');
-  const favItems = allMods.filter(m => favorites.includes(m.id));
+  const isEn = (window.currentAppLanguage === 'en');
+  const seenFavIds = new Set();
+  const favItems = favorites
+    .map(id => (window.SkinCatalog ? window.SkinCatalog.getById(id) : allMods.find(m => m.id === id)))
+    .filter(item => {
+      if (!item || seenFavIds.has(item.id)) return false;
+      seenFavIds.add(item.id);
+      return true;
+    });
 
   if (favBadge) favBadge.textContent = favItems.length;
 
@@ -4622,37 +4956,65 @@ window.openFavModal = function() {
         <div class="w-16 h-16 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center mx-auto mb-3 shadow-inner">
           <i class="fa-regular fa-heart text-2xl"></i>
         </div>
-        <h4 class="text-base font-bold text-white mb-1">В избранном пока ничего нет</h4>
-        <p class="text-xs text-slate-400 max-w-sm mx-auto">Отмечайте любые скины, эффекты или звуки сердечком в каталоге для быстрого доступа.</p>
+        <h4 class="text-base font-bold text-white mb-1">${isEn ? 'Favorites is empty' : 'В избранном пока ничего нет'}</h4>
+        <p class="text-xs text-slate-400 max-w-sm mx-auto">${isEn ? 'Mark any skins, effects or sounds with heart in catalog for quick access.' : 'Отмечайте любые скины, эффекты или звуки сердечком в каталоге для быстрого доступа.'}</p>
       </div>
     `;
   } else {
     favContainer.innerHTML = favItems.map(m => {
-      const isInstalled = isModInstalled(m.id);
+      const isInstalled = (typeof window.isModInstalled === 'function') ? window.isModInstalled(m.id) : false;
+      const cleanTitle = (m.title || '').replace(/'/g, "\\'");
+      const dlUrl = m.download_url || '';
+      const catTitle = (typeof getCategoryTitle === 'function') ? getCategoryTitle(m.category) : (m.category || 'мод');
       return `
-        <div class="fav-card p-3.5 rounded-2xl bg-[#161a26] border border-white/5 hover:border-white/15 transition-all flex flex-col justify-between group shadow-sm">
+        <div class="fav-card p-3.5 rounded-2xl bg-[#161a26] border ${isInstalled ? 'border-emerald-500/30' : 'border-white/5'} hover:border-white/15 transition-all flex flex-col justify-between group shadow-sm" data-mod-id="${m.id}">
           <div>
-            <div class="relative w-full h-36 rounded-xl overflow-hidden bg-slate-900 mb-3 cursor-pointer" onclick="closeFavModal(); openImageLightbox('${m.preview}', '${(m.title || '').replace(/'/g, "\\'")}')" title="Открыть увеличенное изображение">
+            <div class="relative w-full h-36 rounded-xl overflow-hidden bg-slate-900 mb-3 cursor-pointer card-img-wrapper" onclick="closeFavModal(); openImageLightbox('${m.preview}', '${cleanTitle}')" title="${isEn ? 'Zoom photo' : 'Открыть увеличенное изображение'}">
               <img src="${m.preview}" alt="${m.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" onerror="this.src='assets/heroes/dota2_logo_symbol.png'">
               <span class="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-black/70 backdrop-blur-md text-indigo-300 font-semibold text-[10px] uppercase tracking-wider">${m.hero || 'Dota 2'}</span>
-              <button onclick="event.stopPropagation(); toggleFavorite('${m.id}'); openFavModal();" class="absolute top-2 right-2 w-7 h-7 rounded-lg bg-black/70 hover:bg-rose-600 text-rose-400 hover:text-white flex items-center justify-center transition-all shadow-md" title="Удалить из избранного">
+              <button onclick="event.stopPropagation(); toggleFavorite('${m.id}'); openFavModal();" class="absolute top-2 right-2 w-7 h-7 rounded-lg bg-black/70 hover:bg-rose-600 text-rose-400 hover:text-white flex items-center justify-center transition-all shadow-md z-10" title="${isEn ? 'Remove from favorites' : 'Удалить из избранного'}">
                 <i class="fa-solid fa-heart text-xs"></i>
               </button>
+              ${isInstalled ? `
+              <div class="installed-mod-badge absolute bottom-2.5 right-2.5 z-10 px-2 py-0.5 rounded-lg bg-emerald-950/90 text-emerald-300 border border-emerald-500/40 text-[10px] font-bold flex items-center gap-1 shadow-md shadow-emerald-950/40 backdrop-blur-sm">
+                <i class="fa-solid fa-circle-check text-[9px] text-emerald-400"></i>
+                <span>${isEn ? 'In Game' : 'В игре'}</span>
+              </div>
+              ` : ''}
             </div>
             <h4 onclick="closeFavModal(); openModDetail('${m.id}')" class="text-xs font-bold text-white hover:text-indigo-300 cursor-pointer truncate mb-1" title="${m.title}">${m.title}</h4>
             <div class="flex items-center space-x-2 text-[10px] text-slate-400 mb-3">
               <span>${m.file_size || '35 MB'}</span>
               <span>•</span>
-              <span class="capitalize text-indigo-400">${m.category || 'мод'}</span>
+              <span class="capitalize text-indigo-400">${catTitle}</span>
             </div>
           </div>
           <div class="flex items-center gap-2 pt-2 border-t border-white/5">
-            <button onclick="closeFavModal(); openModDetail('${m.id}')" class="flex-1 py-1.5 px-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white text-xs font-medium transition-all text-center">
-              Превью
+            <button onclick="closeFavModal(); openModDetail('${m.id}')" class="flex-1 py-1.5 px-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white text-xs font-medium transition-all text-center flex items-center justify-center gap-1.5">
+              <i class="fa-solid fa-eye text-[10px] text-indigo-400"></i>
+              <span>${isEn ? 'Preview' : 'Превью'}</span>
             </button>
-            <button onclick="handleModInstall('${m.id}', this)" class="flex-1 py-1.5 px-2.5 rounded-xl ${isInstalled ? 'bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 hover:bg-rose-600/30 hover:text-rose-300' : 'bg-indigo-600 hover:bg-indigo-500 text-white'} text-xs font-bold transition-all text-center shadow-sm">
-              ${isInstalled ? 'Установлен' : 'Установить'}
+            ${isInstalled ? `
+            <button 
+              onclick="event.stopPropagation(); uninstallModDirectly('${m.id}', '${cleanTitle}', this)" 
+              class="group/delBtn flex-1 py-1.5 px-2.5 rounded-xl bg-emerald-600/20 hover:bg-rose-600/25 text-emerald-300 hover:text-rose-200 border border-emerald-500/35 hover:border-rose-500/50 text-xs font-semibold text-center transition-all flex items-center justify-center space-x-1.5 shadow-sm active:scale-95"
+              title="${isEn ? 'Click to uninstall mod' : 'Нажмите, чтобы удалить мод'}"
+            >
+              <i class="fa-solid fa-check text-[10px] text-emerald-300 group-hover/delBtn:hidden"></i>
+              <i class="fa-solid fa-trash-can text-[10px] text-rose-300 hidden group-hover/delBtn:inline"></i>
+              <span class="group-hover/delBtn:hidden">${isEn ? 'Installed' : 'Установлен'}</span>
+              <span class="hidden group-hover/delBtn:inline">${isEn ? 'Uninstall' : 'Удалить'}</span>
             </button>
+            ` : `
+            <button 
+              onclick="event.stopPropagation(); installModDirectly('${m.id}', '${cleanTitle}', '${dlUrl}', this)" 
+              class="btn-shimmer flex-1 py-1.5 px-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold text-center transition-all flex items-center justify-center space-x-1.5 shadow-sm shadow-indigo-600/20 active:scale-95"
+              title="${isEn ? 'Download and install mod' : 'Скачать и установить мод'}"
+            >
+              <i class="fa-solid fa-download text-[10px]"></i>
+              <span>${isEn ? 'Download' : 'Скачать'}</span>
+            </button>
+            `}
           </div>
         </div>
       `;
@@ -4664,6 +5026,25 @@ window.openFavModal = function() {
     favModal.style.display = 'flex';
   }
   document.body.style.overflow = 'hidden';
+};
+
+// Global fallback handler for any mod installation triggers
+window.handleModInstall = function(modId, btnElement) {
+  if (!modId) return;
+  const mod = (window.SkinCatalog && window.SkinCatalog.getById ? window.SkinCatalog.getById(modId) : null) || (window.allMods || []).find(m => m.id === modId);
+  if (!mod) {
+    if (typeof showToast === 'function') {
+      showToast(window.currentAppLanguage === 'en' ? "Mod not found in catalog" : "Мод не найден в каталоге", "error");
+    }
+    return;
+  }
+  const isInstalled = (typeof window.isModInstalled === 'function') ? window.isModInstalled(mod.id) : false;
+  const cleanTitle = (mod.title || '').replace(/'/g, "\\'");
+  if (isInstalled) {
+    window.uninstallModDirectly(mod.id, cleanTitle, btnElement);
+  } else {
+    window.installModDirectly(mod.id, cleanTitle, mod.download_url, btnElement);
+  }
 };
 
 window.closeFavModal = function() {
@@ -4920,29 +5301,66 @@ window.activateDesktopMods = async function() {
 
 window.installModDirectly = async function(modId, modTitle, downloadUrl, btnElement) {
   if (!window.dotaManager) {
-    window.open(downloadUrl, '_blank');
+    if (downloadUrl) window.open(downloadUrl, '_blank');
     return;
   }
 
+  // Pre-flight check: is Dota 2 running?
+  if (typeof window.dotaManager.checkStatus === 'function') {
+    try {
+      const status = await window.dotaManager.checkStatus();
+      if (status && status.isRunning) {
+        showToast(
+          window.currentAppLanguage === 'en'
+            ? '⚠️ Please close Dota 2 before installing mods! Game has locked files.'
+            : '⚠️ Закройте Dota 2 перед установкой модов! Игра заблокировала файлы.',
+          'error'
+        );
+        return;
+      }
+    } catch (e) {}
+  }
+
   if (!desktopDotaPath) {
-    const browseRes = await window.dotaManager.browsePath();
-    if (browseRes && browseRes.success) {
-      desktopDotaPath = browseRes.path;
+    const detectRes = await window.dotaManager.detectPath();
+    if (detectRes && detectRes.success) {
+      desktopDotaPath = detectRes.path;
     } else {
-      showToast("Сначала укажите папку Dota 2", "error");
-      return;
+      const browseRes = await window.dotaManager.browsePath();
+      if (browseRes && browseRes.success) {
+        desktopDotaPath = browseRes.path;
+      } else {
+        showToast(
+          window.currentAppLanguage === 'en' ? "Please specify Dota 2 folder first" : "Сначала укажите папку Dota 2",
+          "error"
+        );
+        return;
+      }
     }
   }
 
-  const foundMod = allMods.find(m => m.id === modId);
+  const foundMod = (typeof SkinCatalog !== 'undefined' && SkinCatalog.getById ? SkinCatalog.getById(modId) : null) || (typeof allMods !== 'undefined' && allMods ? allMods.find(m => m.id === modId) : null);
+  if (!downloadUrl && foundMod && foundMod.download_url) {
+    downloadUrl = foundMod.download_url;
+  }
+  if (!downloadUrl) {
+    showToast(
+      window.currentAppLanguage === 'en' ? "Download link not found for this mod" : "Ссылка для скачивания этого мода недоступна",
+      "error"
+    );
+    return;
+  }
+
   const preview = foundMod ? foundMod.preview : '';
   const hero = foundMod ? foundMod.hero : '';
   const heroIcon = foundMod ? foundMod.hero_icon : '';
   const category = foundMod ? foundMod.category : '';
 
-  const originalHtml = btnElement.innerHTML;
-  btnElement.innerHTML = `<i class="fa-solid fa-spinner fa-spin text-[10px]"></i> <span>Ставим...</span>`;
-  btnElement.disabled = true;
+  const originalHtml = btnElement ? btnElement.innerHTML : '';
+  if (btnElement) {
+    btnElement.innerHTML = `<i class="fa-solid fa-spinner fa-spin text-[10px]"></i> <span>${window.currentAppLanguage === 'en' ? 'Installing...' : 'Ставим...'}</span>`;
+    btnElement.disabled = true;
+  }
 
   try {
     const res = await window.dotaManager.installMod({
@@ -4963,45 +5381,85 @@ window.installModDirectly = async function(modId, modTitle, downloadUrl, btnElem
         localStorage.setItem('dotamod_installed_ids', JSON.stringify([...window.installedModIdsSet]));
       } catch (e) {}
 
-      btnElement.disabled = false;
-      btnElement.setAttribute('onclick', `uninstallModDirectly('${modId}', '${(modTitle || '').replace(/'/g, "\\'")}', this)`);
-      btnElement.className = "group/delBtn flex-1 py-2 px-2.5 rounded-xl bg-emerald-600/20 hover:bg-rose-600/25 text-emerald-300 hover:text-rose-200 border border-emerald-500/35 hover:border-rose-500/50 text-xs font-semibold text-center transition-all flex items-center justify-center space-x-1.5 shadow-sm active:scale-95";
-      btnElement.innerHTML = `<i class="fa-solid fa-check text-[10px] text-emerald-300 group-hover/delBtn:hidden"></i><i class="fa-solid fa-trash-can text-[10px] text-rose-300 hidden group-hover/delBtn:inline"></i><span class="group-hover/delBtn:hidden">Установлен</span><span class="hidden group-hover/delBtn:inline">Удалить</span>`;
-      btnElement.title = "Нажмите, чтобы удалить мод";
+      if (btnElement) {
+        btnElement.disabled = false;
+        const cleanTitle = (modTitle || '').replace(/'/g, "\\'");
+        btnElement.setAttribute('onclick', `event.stopPropagation(); uninstallModDirectly('${modId}', '${cleanTitle}', this)`);
+        btnElement.className = "group/delBtn flex-1 py-2 px-2.5 rounded-xl bg-emerald-600/20 hover:bg-rose-600/25 text-emerald-300 hover:text-rose-200 border border-emerald-500/35 hover:border-rose-500/50 text-xs font-semibold text-center transition-all flex items-center justify-center space-x-1.5 shadow-sm active:scale-95";
+        btnElement.innerHTML = `<i class="fa-solid fa-check text-[10px] text-emerald-300 group-hover/delBtn:hidden"></i><i class="fa-solid fa-trash-can text-[10px] text-rose-300 hidden group-hover/delBtn:inline"></i><span class="group-hover/delBtn:hidden">${window.currentAppLanguage === 'en' ? 'Installed' : 'Установлен'}</span><span class="hidden group-hover/delBtn:inline">${window.currentAppLanguage === 'en' ? 'Delete' : 'Удалить'}</span>`;
+        btnElement.title = window.currentAppLanguage === 'en' ? "Click to uninstall mod" : "Нажмите, чтобы удалить мод";
+      }
 
-      showToast(`«${modTitle}» установлен в игру!`, 'success');
+      showToast(
+        window.currentAppLanguage === 'en' ? `«${modTitle}» installed!` : `«${modTitle}» установлен в игру!`,
+        'success'
+      );
       
       await window.refreshInstalledModsState();
       if (typeof window.updateInstalledModButtonsInDOM === 'function') {
         window.updateInstalledModButtonsInDOM();
       }
     } else {
-      showToast("Ошибка установки: " + (res.message || "Не удалось загрузить"), "error");
+      const isEbusy = res && res.message && (res.message.includes('EBUSY') || res.message.includes('resource busy'));
+      if (res && (res.isDotaRunning || isEbusy)) {
+        showToast(
+          window.currentAppLanguage === 'en'
+            ? '⚠️ Mod file is locked! Please close Dota 2 and try again.'
+            : '⚠️ Файл мода заблокирован! Закройте Dota 2 и повторите попытку.',
+          'error'
+        );
+      } else {
+        showToast((window.currentAppLanguage === 'en' ? "Installation error: " : "Ошибка установки: ") + (res && res.message ? res.message : "Не удалось установить"), "error");
+      }
+      if (btnElement) {
+        btnElement.innerHTML = originalHtml;
+        btnElement.disabled = false;
+      }
+    }
+  } catch (err) {
+    showToast((window.currentAppLanguage === 'en' ? "Error: " : "Ошибка: ") + err.message, "error");
+    if (btnElement) {
       btnElement.innerHTML = originalHtml;
       btnElement.disabled = false;
     }
-  } catch (err) {
-    showToast("Ошибка: " + err.message, "error");
-    btnElement.innerHTML = originalHtml;
-    btnElement.disabled = false;
   }
 };
 
 window.uninstallModDirectly = async function(modId, modTitle, btnElement) {
   if (!window.dotaManager) return;
+
+  // Pre-flight check: is Dota 2 running?
+  if (typeof window.dotaManager.checkStatus === 'function') {
+    try {
+      const status = await window.dotaManager.checkStatus();
+      if (status && status.isRunning) {
+        showToast(
+          window.currentAppLanguage === 'en'
+            ? '⚠️ Please close Dota 2 before uninstalling mods! Game has locked mod files.'
+            : '⚠️ Закройте Dota 2 перед удалением модов! Игра заблокировала файлы.',
+          'error'
+        );
+        return;
+      }
+    } catch (e) {}
+  }
+
   if (!desktopDotaPath) {
     const res = await window.dotaManager.detectPath();
     if (res && res.success) desktopDotaPath = res.path;
   }
   if (!desktopDotaPath) {
-    showToast("Сначала укажите папку Dota 2", "error");
+    showToast(
+      window.currentAppLanguage === 'en' ? "Please specify Dota 2 folder first" : "Сначала укажите папку Dota 2",
+      "error"
+    );
     return;
   }
 
   const originalHtml = btnElement ? btnElement.innerHTML : '';
   if (btnElement) {
     btnElement.disabled = true;
-    btnElement.innerHTML = `<i class="fa-solid fa-spinner fa-spin text-[10px]"></i> <span>Удаление...</span>`;
+    btnElement.innerHTML = `<i class="fa-solid fa-spinner fa-spin text-[10px]"></i> <span>${window.currentAppLanguage === 'en' ? 'Removing...' : 'Удаление...'}</span>`;
   }
 
   try {
@@ -5021,7 +5479,21 @@ window.uninstallModDirectly = async function(modId, modTitle, btnElement) {
         } catch (e) {}
       }
 
-      showToast(`Мод «${modTitle || modId}» удален`, 'info');
+      if (btnElement) {
+        btnElement.disabled = false;
+        const cleanTitle = (modTitle || '').replace(/'/g, "\\'");
+        const found = (typeof SkinCatalog !== 'undefined' && SkinCatalog.getById ? SkinCatalog.getById(modId) : null) || (typeof allMods !== 'undefined' && allMods ? allMods.find(m => m.id === modId) : null);
+        const dlUrl = found && found.download_url ? found.download_url : '';
+        btnElement.setAttribute('onclick', `event.stopPropagation(); installModDirectly('${modId}', '${cleanTitle}', '${dlUrl}', this)`);
+        btnElement.className = "flex-1 py-2 px-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white text-xs font-semibold text-center transition-all flex items-center justify-center space-x-1.5 shadow-md shadow-indigo-950/40 active:scale-95";
+        btnElement.innerHTML = `<i class="fa-solid fa-download text-[10px]"></i><span>${window.currentAppLanguage === 'en' ? 'Download' : 'Скачать'}</span>`;
+        btnElement.title = window.currentAppLanguage === 'en' ? "Install mod into game" : "Установить мод в игру";
+      }
+
+      showToast(
+        window.currentAppLanguage === 'en' ? `Mod «${modTitle || modId}» removed` : `Мод «${modTitle || modId}» удален`,
+        'info'
+      );
       await window.refreshInstalledModsState();
       if (typeof window.updateInstalledModButtonsInDOM === 'function') {
         window.updateInstalledModButtonsInDOM();
@@ -5030,14 +5502,23 @@ window.uninstallModDirectly = async function(modId, modTitle, btnElement) {
         window.refreshInstalledMods();
       }
     } else {
-      showToast("Ошибка удаления: " + (res.message || "Ошибка"), "error");
+      if (res && res.isDotaRunning) {
+        showToast(
+          window.currentAppLanguage === 'en'
+            ? '⚠️ Please close Dota 2 before uninstalling mods! Game has locked mod files.'
+            : '⚠️ Закройте Dota 2 перед удалением модов! Игра заблокировала файлы.',
+          'error'
+        );
+      } else {
+        showToast((window.currentAppLanguage === 'en' ? "Deletion error: " : "Ошибка удаления: ") + (res && res.message ? res.message : "Ошибка"), "error");
+      }
       if (btnElement) {
         btnElement.disabled = false;
         btnElement.innerHTML = originalHtml;
       }
     }
   } catch (err) {
-    showToast("Ошибка: " + err.message, "error");
+    showToast((window.currentAppLanguage === 'en' ? "Error: " : "Ошибка: ") + err.message, "error");
     if (btnElement) {
       btnElement.disabled = false;
       btnElement.innerHTML = originalHtml;
@@ -5074,8 +5555,8 @@ function resolveModInfo(mod) {
   if (Array.isArray(allMods) && allMods.length > 0) {
     // 1. By ID match
     if (mod.id) {
-      const match = allMods.find(m => m.id === mod.id);
-      if (match) return { preview: match.preview, hero: match.hero, hero_icon: match.hero_icon };
+      const match = (window.SkinCatalog ? window.SkinCatalog.getById(mod.id) : null) || allMods.find(m => m.id === mod.id);
+      if (match) return { id: match.id, preview: match.preview, hero: match.hero, hero_icon: match.hero_icon, title: match.name || match.title, category: match.category, rarity: match.rarity };
     }
 
     // 2. By exact title match
@@ -5608,7 +6089,7 @@ window.refreshInstalledModsBadge = async function(count = null) {
 // ==========================================
 // REAL AUTO-UPDATER SYSTEM (GitHub Releases Integration)
 // ==========================================
-const DEFAULT_INITIAL_VERSION = '1.5.0';
+const DEFAULT_INITIAL_VERSION = '1.6.0';
 window._availableUpdate = null;
 window._updateCheckPromise = null;
 

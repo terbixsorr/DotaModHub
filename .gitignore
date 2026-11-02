@@ -1,9 +1,39 @@
 node_modules/
 dist/
+.next/
+*.db
+*.db-journal
 *.exe
 *.zip
 *.log
 .DS_Store
 Thumbs.db
 __temp*
+temp_*
 DotaModHub_FirstVersion/
+
+# Local workspace subfolder (tracked directly at repository root)
+DotaModHub/
+
+# Independent sub-projects in workspace
+hyprland-config-manager/
+scroll-world/
+Хвойный мир/
+Untitled VPN/
+sonic/
+sonic-desktop/
+agent/
+.agents/
+.claude/
+.wrangler/
+
+# Temporary test artifacts
+test_*.html
+test_*.png
+dump_partial.bin
+audit.cjs
+trace.txt
+ftp_*.txt
+post_helper.html
+live_test.html
+skills-lock.json
