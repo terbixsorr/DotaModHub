@@ -2,7 +2,11 @@ const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const https = require('https');
+const http = require('http');
 const { exec } = require('child_process');
+
+// Enable unmuted media autoplay for audio/video previews
+app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 
 let mainWindow;
 
@@ -514,9 +518,22 @@ function downloadWithRedirect(url, targetPath, maxRedirects = 5) {
   return new Promise((resolve) => {
     if (maxRedirects <= 0) return resolve({ success: false, message: 'Too many redirects' });
 
-    const req = https.get(url, (response) => {
+    try {
+      const dir = path.dirname(targetPath);
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    } catch (e) {}
+
+    const client = url.startsWith('http://') ? http : https;
+    const req = client.get(url, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) DotaModHub/1.6.0' } }, (response) => {
       if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
-        return resolve(downloadWithRedirect(response.headers.location, targetPath, maxRedirects - 1));
+        let redirectUrl = response.headers.location;
+        if (!redirectUrl.startsWith('http://') && !redirectUrl.startsWith('https://')) {
+          try {
+            const u = new URL(url);
+            redirectUrl = new URL(redirectUrl, u.origin).href;
+          } catch (e) {}
+        }
+        return resolve(downloadWithRedirect(redirectUrl, targetPath, maxRedirects - 1));
       }
 
       if (response.statusCode !== 200) {
@@ -527,6 +544,13 @@ function downloadWithRedirect(url, targetPath, maxRedirects = 5) {
       response.pipe(file);
       file.on('finish', () => {
         file.close(() => {
+          try {
+            const stats = fs.statSync(targetPath);
+            if (stats.size === 0) {
+              try { fs.unlinkSync(targetPath); } catch (e) {}
+              return resolve({ success: false, message: 'Загруженный файл пуст (0 байт)' });
+            }
+          } catch (e) {}
           resolve({ success: true });
         });
       });
@@ -790,6 +814,16 @@ ipcMain.handle('dota:install-mod', async (event, { dotaPath, modId, modTitle, do
     const tempDownload = path.join(modsDir, `__temp_dl_${pakNumStr}_${Date.now()}.${isZip ? 'zip' : 'vpk'}`);
     let sourceVpkPath = null;
     let extractDir = null;
+
+    // Download mod package to temporary file
+    const dlResult = await downloadWithRedirect(downloadUrl, tempDownload);
+    if (!dlResult || !dlResult.success) {
+      try { if (fs.existsSync(tempDownload)) fs.unlinkSync(tempDownload); } catch (e) {}
+      return { 
+        success: false, 
+        message: (dlResult && dlResult.message) ? `Не удалось скачать мод: ${dlResult.message}` : 'Ошибка скачивания файла мода' 
+      };
+    }
 
     if (isZip) {
       extractDir = path.join(modsDir, `__temp_ex_${pakNumStr}_${Date.now()}`);

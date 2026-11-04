@@ -2833,8 +2833,8 @@ function renderRecentlyAdded() {
               class="px-2.5 py-1 rounded-lg bg-[#161a28] hover:bg-indigo-600 text-indigo-300 hover:text-white text-[11px] font-semibold flex items-center gap-1 border border-white/10 transition-all"
               title="${isEn ? 'Open details and preview' : 'Открыть подробный предпросмотр'}"
             >
-              <i class="fa-solid ${mod.category === 'mega-kill' || mod.category === 'hero-sounds' ? 'fa-volume-high' : 'fa-eye'} text-[10px]"></i>
-              <span>${mod.category === 'mega-kill' || mod.category === 'hero-sounds' ? (isEn ? 'Audio' : 'Озвучка') : (isEn ? 'Preview' : 'Превью')}</span>
+              <i class="fa-solid ${mod.category === 'mega-kill' || mod.category === 'hero-sounds' || mod.category === 'sounds' ? 'fa-volume-high' : 'fa-eye'} text-[10px]"></i>
+              <span>${mod.category === 'mega-kill' || mod.category === 'hero-sounds' || mod.category === 'sounds' ? (isEn ? 'Audio' : 'Озвучка') : (isEn ? 'Preview' : 'Превью')}</span>
             </button>
             
             ${isInstalled ? `
@@ -3866,8 +3866,8 @@ function createCardHTML(mod) {
             class="flex-1 py-2 px-2.5 rounded-xl bg-[#161a28] hover:bg-indigo-600/30 text-slate-200 hover:text-indigo-300 border border-white/10 hover:border-indigo-500/40 text-xs font-semibold text-center transition-all flex items-center justify-center space-x-1.5 group/prevBtn"
             title="${isEn ? 'Open details and preview' : 'Открыть подробный предпросмотр'}"
           >
-            <i class="fa-solid ${(mod.category === 'mega-kill' || mod.category === 'hero-sounds') ? 'fa-volume-high text-indigo-400' : 'fa-eye text-indigo-400'} text-[11px] group-hover/prevBtn:scale-110 transition-transform"></i>
-            <span>${(mod.category === 'mega-kill' || mod.category === 'hero-sounds') ? (isEn ? 'Audio' : 'Озвучка') : (isEn ? 'Preview' : 'Превью')}</span>
+            <i class="fa-solid ${(mod.category === 'mega-kill' || mod.category === 'hero-sounds' || mod.category === 'sounds') ? 'fa-volume-high text-indigo-400' : 'fa-eye text-indigo-400'} text-[11px] group-hover/prevBtn:scale-110 transition-transform"></i>
+            <span>${(mod.category === 'mega-kill' || mod.category === 'hero-sounds' || mod.category === 'sounds') ? (isEn ? 'Audio' : 'Озвучка') : (isEn ? 'Preview' : 'Превью')}</span>
           </button>
           
           ${isInstalled ? `
@@ -4429,45 +4429,99 @@ const HERO_SOUND_MAP = {
   "sound-naga-siren-growth-correction": {"id":"sound-naga-siren-growth-correction","title":"Naga Siren: Growth Correction","hero":"Naga Siren","file":"audio/hero-sounds/naga-growth-correction.mp3","type":"audio","icon":"fa-wand-magic"},
 };
 
+function findHeroSoundInfo(mod) {
+  if (!mod) return null;
+  if (HERO_SOUND_MAP[mod.id]) return HERO_SOUND_MAP[mod.id];
+
+  const stripped = (mod.id || '').replace(/^(hero-sounds-|sounds-|mega-kill-)/, '');
+  if (HERO_SOUND_MAP[stripped]) return HERO_SOUND_MAP[stripped];
+  if (HERO_SOUND_MAP['sound-' + stripped]) return HERO_SOUND_MAP['sound-' + stripped];
+  if (HERO_SOUND_MAP['hero-sounds-' + stripped]) return HERO_SOUND_MAP['hero-sounds-' + stripped];
+
+  // Try matching by normalized title or keyword
+  const titleNorm = (mod.title || '').toLowerCase();
+  for (const k in HERO_SOUND_MAP) {
+    const item = HERO_SOUND_MAP[k];
+    const itNorm = (item.title || '').toLowerCase();
+    if (titleNorm.includes(k) || (itNorm && titleNorm.includes(itNorm))) {
+      return item;
+    }
+  }
+
+  // Check if mod object has direct media preview
+  if (mod.media_preview || mod.local_audio) {
+    const file = mod.media_preview || mod.local_audio;
+    return {
+      id: mod.id,
+      title: mod.title,
+      hero: mod.hero || 'Dota 2',
+      file: file,
+      type: (file.toLowerCase().endsWith('.mp4') ? 'video' : 'audio'),
+      icon: 'fa-volume-high'
+    };
+  }
+
+  return null;
+}
 
 window.playHeroSound = function(file, title, lineId = 'main_sound') {
   stopVoiceLine();
 
+  if (!file) {
+    console.warn('playHeroSound: no file specified, playing signature effect');
+    playAudioEffect('default');
+    return;
+  }
+
   currentPlayingId = lineId;
   updateAudioUI(true, { title: title || 'Звук мода' });
 
-  // If there's an active video element playing this file, sync with video
+  const isVideo = file.toLowerCase().endsWith('.mp4');
   const videoSection = document.getElementById('modalMediaVideoContainer');
   const videoEl = document.getElementById('modalMediaVideo');
-  if (file.endsWith('.mp4') && videoSection && !videoSection.classList.contains('hidden') && videoEl) {
-    const filename = file.split('/').pop();
-    if (videoEl.src && decodeURI(videoEl.src).includes(filename)) {
-      videoEl.currentTime = 0;
-      videoEl.volume = currentAudioVolume;
-      videoEl.muted = false;
-      videoEl.play().catch(() => {});
-      videoEl.onended = () => {
-        currentPlayingId = null;
-        updateAudioUI(false);
-      };
-      return;
-    }
+
+  if (isVideo && videoEl) {
+    if (videoSection) videoSection.classList.remove('hidden');
+    videoEl.src = encodeURI(file);
+    videoEl.currentTime = 0;
+    videoEl.volume = currentAudioVolume;
+    videoEl.muted = false;
+    videoEl.play().then(() => {
+      updateAudioUI(true, { title: title || 'Звук мода' });
+    }).catch(err => {
+      console.warn('Video playback error, fallback to audio effect:', err);
+      playAudioEffect('default');
+    });
+    videoEl.onended = () => {
+      currentPlayingId = null;
+      updateAudioUI(false);
+    };
+    return;
   }
 
-  currentAudio = new Audio(file);
-  currentAudio.volume = currentAudioVolume;
-  currentAudio.onended = () => {
-    currentPlayingId = null;
-    updateAudioUI(false);
-  };
-  currentAudio.onerror = () => {
-    currentPlayingId = null;
-    updateAudioUI(false);
-  };
-  currentAudio.play().catch(() => {
-    currentPlayingId = null;
-    updateAudioUI(false);
-  });
+  try {
+    currentAudio = new Audio(encodeURI(file));
+    currentAudio.volume = currentAudioVolume;
+    currentAudio.onended = () => {
+      currentPlayingId = null;
+      updateAudioUI(false);
+    };
+    currentAudio.onerror = (e) => {
+      console.warn('Audio element error, falling back to synthesizer:', e);
+      currentPlayingId = null;
+      updateAudioUI(false);
+      playAudioEffect('default');
+    };
+    currentAudio.play().catch(err => {
+      console.warn('Audio play() rejected, falling back to synthesizer:', err);
+      currentPlayingId = null;
+      updateAudioUI(false);
+      playAudioEffect('default');
+    });
+  } catch (err) {
+    console.error('Audio creation error:', err);
+    playAudioEffect('default');
+  }
 };
 
 // Character Key Detection for Announcers & Hero Sound Mods
@@ -4511,6 +4565,16 @@ function detectCharacterKey(mod) {
   if (t.includes('iroha') || t.includes('isshiki')) return 'cm';
   if (t.includes('hestia')) return 'lina';
   if (t.includes('diretide') || t.includes('dire tide')) return 'axe';
+  if (t.includes('papich') || t.includes('папич')) return 'axe';
+  if (t.includes('sematary')) return 'darkest';
+  if (t.includes('shadow fiend') || t.includes('shadow-fiend') || t.includes(' сф ') || t.includes('sf')) return 'darkest';
+  if (t.includes('invoker') || t.includes('инвокер')) return 'storm';
+  if (t.includes('pudge') || t.includes('пудж')) return 'bristle';
+  if (t.includes('weaver') || t.includes('вивер')) return 'meepo';
+  if (t.includes('arc warden') || t.includes('арк')) return 'clock';
+  if (t.includes('wraith king') || t.includes('вк')) return 'axe';
+  if (t.includes('tcoaal')) return 'glados';
+  if (t.includes('wot') || t.includes('dagon')) return 'cs';
 
   return 'default';
 }
@@ -4522,19 +4586,42 @@ window.playCharacterLine = function(charKey, lineId, text, audioFile = null) {
   updateAudioUI(true, { title: text || lineId });
 
   if (audioFile) {
-    currentAudio = new Audio(audioFile);
-    currentAudio.volume = currentAudioVolume;
-    currentAudio.onended = () => {
-      currentPlayingId = null;
-      updateAudioUI(false);
-    };
-    currentAudio.onerror = () => {
+    const isVideo = audioFile.toLowerCase().endsWith('.mp4');
+    const videoSection = document.getElementById('modalMediaVideoContainer');
+    const videoEl = document.getElementById('modalMediaVideo');
+
+    if (isVideo && videoEl) {
+      if (videoSection) videoSection.classList.remove('hidden');
+      videoEl.src = encodeURI(audioFile);
+      videoEl.currentTime = 0;
+      videoEl.volume = currentAudioVolume;
+      videoEl.muted = false;
+      videoEl.play().catch(() => fallbackSpeech());
+      videoEl.onended = () => {
+        currentPlayingId = null;
+        updateAudioUI(false);
+      };
+      return;
+    }
+
+    try {
+      currentAudio = new Audio(encodeURI(audioFile));
+      currentAudio.volume = currentAudioVolume;
+      currentAudio.onended = () => {
+        currentPlayingId = null;
+        updateAudioUI(false);
+      };
+      currentAudio.onerror = () => {
+        fallbackSpeech();
+      };
+      currentAudio.play().catch(() => {
+        fallbackSpeech();
+      });
+      return;
+    } catch (e) {
       fallbackSpeech();
-    };
-    currentAudio.play().catch(() => {
-      fallbackSpeech();
-    });
-    return;
+      return;
+    }
   }
 
   fallbackSpeech();
@@ -4823,17 +4910,11 @@ window.openModDetail = function(id) {
   }
 
   // Sound Mod & Preview Elements
-  const isHeroSoundMod = (mod.category === 'hero-sounds');
-  const hsInfo = isHeroSoundMod ? (HERO_SOUND_MAP[mod.id] || {
-    id: mod.id,
-    title: mod.title,
-    hero: mod.hero || 'Dota 2',
-    file: mod.media_preview || mod.local_audio,
-    type: (mod.media_preview && mod.media_preview.endsWith('.mp4') ? 'video' : 'audio'),
-    icon: 'fa-volume-high'
-  }) : null;
+  const isHeroSoundMod = (mod.category === 'hero-sounds' || mod.category === 'sounds');
+  const hsInfo = isHeroSoundMod ? findHeroSoundInfo(mod) : null;
 
   const isSoundMod = isHeroSoundMod ||
+                     mod.category === 'sounds' ||
                      mod.category === 'mega-kill' || 
                      mod.hero === 'Announcer' || 
                      (mod.title && /announcer|mega-kill|озвучк|голос|звук/i.test(mod.title));
@@ -4847,8 +4928,8 @@ window.openModDetail = function(id) {
 
   const bgVideoSrc = (mod.category === 'backgrounds') ? window.getVideoBackgroundUrl(mod) : null;
 
-  if (isHeroSoundMod && hsInfo) {
-    // 1. DEDICATED HERO SOUND MOD (Authentic Sound Effects for all 54 mods)
+  if (isHeroSoundMod && hsInfo && hsInfo.file) {
+    // 1. DEDICATED HERO SOUND MOD (Authentic Sound Effects with known audio/video file)
     const heroKey = detectCharacterKey(mod);
     const heroVoiceSet = (heroKey !== 'default' && CHARACTER_VOICE_SETS[heroKey]) ? CHARACTER_VOICE_SETS[heroKey] : null;
 
@@ -4901,15 +4982,16 @@ window.openModDetail = function(id) {
             title="Воспроизвести звук мода"
           >
             <span class="flex items-center space-x-2 truncate">
-              <i class="fa-solid ${hsInfo.icon} text-indigo-400 text-sm group-hover/snd:scale-110 transition-transform"></i>
+              <i class="fa-solid ${hsInfo.icon || 'fa-volume-high'} text-indigo-400 text-sm group-hover/snd:scale-110 transition-transform"></i>
               <span class="font-bold text-xs truncate">▶ Слушать звук: ${hsInfo.title}</span>
             </span>
             <i class="fa-solid fa-play text-xs text-indigo-400 play-state-icon shrink-0"></i>
           </button>
         `;
 
-        if (heroVoiceSet && heroVoiceSet.lines) {
-          heroVoiceSet.lines.slice(0, 4).forEach(line => {
+        const voiceSetToUse = heroVoiceSet || CHARACTER_VOICE_SETS[heroKey] || CHARACTER_VOICE_SETS['default'];
+        if (voiceSetToUse && voiceSetToUse.lines) {
+          voiceSetToUse.lines.slice(0, 4).forEach(line => {
             buttonsHtml += `
               <button 
                 onclick="playCharacterLine('${heroKey}', '${line.id}', '${line.text.replace(/'/g, "\\'")}', '${line.audio || ''}')"
@@ -4918,7 +5000,7 @@ window.openModDetail = function(id) {
                 title="Реплика: ${line.text}"
               >
                 <span class="flex items-center space-x-1.5 truncate">
-                  <i class="fa-solid ${heroVoiceSet.icon} text-indigo-400 text-[11px] group-hover/snd:scale-110 transition-transform"></i>
+                  <i class="fa-solid ${voiceSetToUse.icon || 'fa-microphone'} text-indigo-400 text-[11px] group-hover/snd:scale-110 transition-transform"></i>
                   <span class="truncate">${line.title}</span>
                 </span>
                 <i class="fa-solid fa-play text-[9px] text-slate-500 play-state-icon shrink-0"></i>
