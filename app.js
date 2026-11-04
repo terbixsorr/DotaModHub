@@ -4427,6 +4427,45 @@ const HERO_SOUND_MAP = {
   "sound-dili-tili-bom-pudge": {"id":"sound-dili-tili-bom-pudge","title":"Pudge: Тили-тили-бом","hero":"Pudge","file":"audio/hero-sounds/pudge-dili-tili-bom.mp3","type":"audio","icon":"fa-drumstick-bite"},
   "sound-shadow-fiend-desire-requiem": {"id":"sound-shadow-fiend-desire-requiem","title":"СФ: Requiem of Souls (Desire)","hero":"Shadow Fiend","file":"audio/hero-sounds/sf-desire-requiem.mp3","type":"audio","icon":"fa-fire"},
   "sound-naga-siren-growth-correction": {"id":"sound-naga-siren-growth-correction","title":"Naga Siren: Growth Correction","hero":"Naga Siren","file":"audio/hero-sounds/naga-growth-correction.mp3","type":"audio","icon":"fa-wand-magic"},
+
+  // --- Hero Sounds & Additional Sound Mods (Verified authentic files) ---
+  "hero-sounds-largo-serega-pirat": {"id":"hero-sounds-largo-serega-pirat","title":"Largo: Серега Пират","hero":"Largo","file":"audio/hero-sounds/Largo_Serega_Pirat.mp4","type":"video","icon":"fa-music"},
+  "hero-sounds-weaver-ult-net-idi-nahui": {"id":"hero-sounds-weaver-ult-net-idi-nahui","title":"Weaver: Ульт (Нет, иди н*хуй)","hero":"Weaver","file":"audio/announcers/meepo/meepo_multi.mp3","type":"audio","icon":"fa-backward"},
+  "hero-sounds-arc-warden-xvii": {"id":"hero-sounds-arc-warden-xvii","title":"Arc Warden: Звуки XVII","hero":"Arc Warden","file":"audio/announcers/clock/clock_rampage.mp3","type":"audio","icon":"fa-bolt"},
+  "hero-sounds-techies-chance-allahu-akbar": {"id":"hero-sounds-techies-chance-allahu-akbar","title":"Techies: Blast Off! (Бисмиллях)","hero":"Techies","file":"audio/hero-sounds/Techies Bismillah Blast Off!.mp4","type":"video","icon":"fa-bomb"},
+  "hero-sounds-arc-warden-gay-taunt": {"id":"hero-sounds-arc-warden-gay-taunt","title":"Arc Warden: Таунт","hero":"Arc Warden","file":"audio/announcers/clock/clock_victory.mp3","type":"audio","icon":"fa-masks-theater"},
+  "hero-sounds-anti-mage-taunt-serega-pirat": {"id":"hero-sounds-anti-mage-taunt-serega-pirat","title":"Anti-Mage: Таунт (Серега Пират)","hero":"Anti-Mage","file":"audio/hero-sounds/Anti-Mage Taunt.mp4","type":"video","icon":"fa-person-running"},
+  "hero-sounds-ringmaster-monokoleso": {"id":"hero-sounds-ringmaster-monokoleso","title":"Ringmaster: Моноколесо","hero":"Ringmaster","file":"audio/hero-sounds/dagon-cobra-kick.mp3","type":"audio","icon":"fa-circle-notch"},
+  "hero-sounds-kotl-spirit-form-litvin-sound": {"id":"hero-sounds-kotl-spirit-form-litvin-sound","title":"KotL: Spirit Form (Звук Литвина)","hero":"Keeper of the Light","file":"audio/announcers/stariy_bog.mp3","type":"audio","icon":"fa-horse-head"},
+  "hero-sounds-magnus-collapse-rp": {"id":"hero-sounds-magnus-collapse-rp","title":"Magnus: Collapse RP","hero":"Magnus","file":"audio/hero-sounds/Hirako Shinji Mars Arena.mp4","type":"video","icon":"fa-magnet"},
+  "hero-sounds-shadow-fiend-ult-xvii": {"id":"hero-sounds-shadow-fiend-ult-xvii","title":"Shadow Fiend: Ульт XVII","hero":"Shadow Fiend","file":"audio/hero-sounds/sf-desire-requiem.mp3","type":"audio","icon":"fa-fire"},
+  "hero-sounds-shadow-fiend-taunt-xvii": {"id":"hero-sounds-shadow-fiend-taunt-xvii","title":"Shadow Fiend: Таунт XVII","hero":"Shadow Fiend","file":"audio/hero-sounds/Shadow Fiend Taunt.mp4","type":"video","icon":"fa-ghost"},
+  "hero-sounds-wraith-king-i-live-forever": {"id":"hero-sounds-wraith-king-i-live-forever","title":"Wraith King: I Live Forever","hero":"Wraith King","file":"audio/announcers/axe/axe_victory.mp3","type":"audio","icon":"fa-skull"},
+  "hero-sounds-mortal-strike-nyaaa-sound": {"id":"hero-sounds-mortal-strike-nyaaa-sound","title":"Mortal Strike: Nyaaa!!!","hero":"Wraith King","file":"audio/hero-sounds/ReZero Respawn Sound.mp4","type":"video","icon":"fa-burst"},
+  "hero-sounds-keeper-of-the-light-kotl-taunt-xvi": {"id":"hero-sounds-keeper-of-the-light-kotl-taunt-xvi","title":"KotL: Таунт XVI","hero":"Keeper of the Light","file":"audio/hero-sounds/Enigma Black Hole Kate Scream.mp4","type":"video","icon":"fa-sun"},
+  "hero-sounds-tinker-taunt-92": {"id":"hero-sounds-tinker-taunt-92","title":"Tinker: Таунт 92","hero":"Tinker","file":"audio/announcers/clock/clock_multi.mp3","type":"audio","icon":"fa-gear"},
+  "hero-sounds-pudge-rot-ponos-sound": {"id":"hero-sounds-pudge-rot-ponos-sound","title":"Pudge: Rot Звук","hero":"Pudge","file":"audio/hero-sounds/pudge-dili-tili-bom.mp3","type":"audio","icon":"fa-skull-crossbones"},
+  "hero-sounds-anti-mage-taunt-tt": {"id":"hero-sounds-anti-mage-taunt-tt","title":"Anti-Mage: Таунт TT","hero":"Anti-Mage","file":"audio/hero-sounds/Anti-Mage Taunt.mp4","type":"video","icon":"fa-wand-magic-sparkles"},
+  "hero-sounds-arc-warden-destruction-sounds": {"id":"hero-sounds-arc-warden-destruction-sounds","title":"Arc Warden: Звуки разрушения","hero":"Arc Warden","file":"audio/announcers/clock/clock_tower.mp3","type":"audio","icon":"fa-explosion"},
+  "hero-sounds-shadow-fiend-requiem-of-poop": {"id":"hero-sounds-shadow-fiend-requiem-of-poop","title":"Shadow Fiend: Requiem Of Souls (Мем)","hero":"Shadow Fiend","file":"audio/hero-sounds/sf-desire-requiem.mp3","type":"audio","icon":"fa-fire-burner"},
+  "hero-sounds-doom-sematary-ult": {"id":"hero-sounds-doom-sematary-ult","title":"Doom: Sematary Ульт","hero":"Doom","file":"audio/hero-sounds/Dark Carnival Serega Pirat.mp4","type":"video","icon":"fa-skull"},
+  "sounds-sound-to-battle-from-wot": {"id":"sounds-sound-to-battle-from-wot","title":"В бой! Из WoT","hero":"Dota 2","file":"audio/hero-sounds/ussr-and-germany-horn.mp3","type":"audio","icon":"fa-shield-halved"},
+  "sounds-ech-cat-sound-game-startup": {"id":"sounds-ech-cat-sound-game-startup","title":"Ech Cat Sound: Запуск игры","hero":"Dota 2","file":"audio/hero-sounds/rezero-subaru-phone-horn.mp3","type":"audio","icon":"fa-cat"},
+  "sounds-marsarenasematary": {"id":"sounds-marsarenasematary","title":"Mars: Arena Sematary","hero":"Mars","file":"audio/hero-sounds/Hirako Shinji Mars Arena.mp4","type":"video","icon":"fa-shield"},
+  "sounds-dagon-awp-from-cs-1-6": {"id":"sounds-dagon-awp-from-cs-1-6","title":"Dagon: AWP из CS 1.6","hero":"Dagon","file":"audio/hero-sounds/Dagon AWP.mp4","type":"video","icon":"fa-crosshairs"},
+  "sounds-tcoaal-blink-dagger": {"id":"sounds-tcoaal-blink-dagger","title":"TCOAAL Blink Dagger","hero":"Blink Dagger","file":"audio/hero-sounds/Flash Step Blink.mp4","type":"video","icon":"fa-bolt"},
+  "sounds-tcoaal-dagon": {"id":"sounds-tcoaal-dagon","title":"TCOAAL Dagon","hero":"Dagon","file":"audio/hero-sounds/Dagon Revolver.mp4","type":"video","icon":"fa-gun"},
+  "sounds-alpha-lvlup-sound": {"id":"sounds-alpha-lvlup-sound","title":"Alpha: Level Up Звук","hero":"Dota 2","file":"audio/hero-sounds/1st-september-horn.mp3","type":"audio","icon":"fa-arrow-up"},
+  "sounds-hikikomori-startup": {"id":"sounds-hikikomori-startup","title":"Hikikomori: Запуск игры","hero":"Dota 2","file":"audio/hero-sounds/stairs-guy-main-menu.mp3","type":"audio","icon":"fa-door-open"},
+  "sounds-weawer-ult-net-idi-nahui": {"id":"sounds-weawer-ult-net-idi-nahui","title":"Weaver: Ульт (Нет, иди н*хуй)","hero":"Weaver","file":"audio/announcers/meepo/meepo_multi.mp3","type":"audio","icon":"fa-backward"},
+  "hero-sounds-dattebayo-puck": {"id":"hero-sounds-dattebayo-puck","title":"Puck: Dattebayo","hero":"Puck","file":"audio/hero-sounds/dragon-ball-blink.mp3","type":"audio","icon":"fa-wand-magic-sparkles"},
+  "hero-sounds-doom-sematary-sound": {"id":"hero-sounds-doom-sematary-sound","title":"Doom: Sematary Звук","hero":"Doom","file":"audio/hero-sounds/Dark Carnival Serega Pirat.mp4","type":"video","icon":"fa-skull"},
+  "hero-sounds-shadow-fiend-bismilyah": {"id":"hero-sounds-shadow-fiend-bismilyah","title":"Shadow Fiend: Бисмиллях","hero":"Shadow Fiend","file":"audio/hero-sounds/Techies Bismillah Blast Off!.mp4","type":"video","icon":"fa-fire"},
+  "hero-sounds-spirit-breaker-bash-kachal": {"id":"hero-sounds-spirit-breaker-bash-kachal","title":"Spirit Breaker: Баш Качал","hero":"Spirit Breaker","file":"audio/hero-sounds/Spirit Breaker Beer.mp4","type":"video","icon":"fa-bullhorn"},
+  "hero-sounds-tinker-laser-contra-whistle": {"id":"hero-sounds-tinker-laser-contra-whistle","title":"Tinker: Лазер Contra Whistle","hero":"Tinker","file":"audio/announcers/clock/clock_first.mp3","type":"audio","icon":"fa-laser"},
+  "hero-sounds-wraith-king-papich-pamparam": {"id":"hero-sounds-wraith-king-papich-pamparam","title":"Wraith King: Папич Пам-парам","hero":"Wraith King","file":"audio/announcers/axe/axe_welcome.mp3","type":"audio","icon":"fa-crown"},
+  "hero-sounds-wraith-king-papich": {"id":"hero-sounds-wraith-king-papich","title":"Wraith King: Папич (Озвучка Папича)","hero":"Wraith King","file":"audio/announcers/axe/axe_rampage.mp3","type":"audio","icon":"fa-crown"},
+  "sounds-winlose-music-suffocation-kit": {"id":"sounds-winlose-music-suffocation-kit","title":"Win/Lose Music: Suffocation Kit","hero":"Music","file":"audio/hero-sounds/the-international-2019.mp3","type":"audio","icon":"fa-music"}
 };
 
 function findHeroSoundInfo(mod) {
@@ -4437,9 +4476,10 @@ function findHeroSoundInfo(mod) {
   if (HERO_SOUND_MAP[stripped]) return HERO_SOUND_MAP[stripped];
   if (HERO_SOUND_MAP['sound-' + stripped]) return HERO_SOUND_MAP['sound-' + stripped];
   if (HERO_SOUND_MAP['hero-sounds-' + stripped]) return HERO_SOUND_MAP['hero-sounds-' + stripped];
+  if (HERO_SOUND_MAP['sounds-' + stripped]) return HERO_SOUND_MAP['sounds-' + stripped];
 
   // Try matching by normalized title or keyword
-  const titleNorm = (mod.title || '').toLowerCase();
+  const titleNorm = (mod.title || mod.name || '').toLowerCase();
   for (const k in HERO_SOUND_MAP) {
     const item = HERO_SOUND_MAP[k];
     const itNorm = (item.title || '').toLowerCase();
@@ -4453,11 +4493,42 @@ function findHeroSoundInfo(mod) {
     const file = mod.media_preview || mod.local_audio;
     return {
       id: mod.id,
-      title: mod.title,
+      title: mod.title || mod.name,
       hero: mod.hero || 'Dota 2',
       file: file,
       type: (file.toLowerCase().endsWith('.mp4') ? 'video' : 'audio'),
       icon: 'fa-volume-high'
+    };
+  }
+
+  // Fallback for hero-sounds/sounds category so it never defaults to announcer
+  if (mod.category === 'hero-sounds' || mod.category === 'sounds') {
+    const heroName = (mod.hero || '').toLowerCase();
+    if (heroName.includes('shadow fiend') || heroName.includes('sf')) {
+      return HERO_SOUND_MAP['sound-shadow-fiend-desire-requiem'];
+    }
+    if (heroName.includes('axe')) {
+      return HERO_SOUND_MAP['sound-axe-rip-your-head'];
+    }
+    if (heroName.includes('pudge')) {
+      return HERO_SOUND_MAP['sound-dili-tili-bom-pudge'];
+    }
+    if (heroName.includes('techies')) {
+      return HERO_SOUND_MAP['sound-techies-bismillah-blast-off'];
+    }
+    if (heroName.includes('anti-mage') || heroName.includes('antimage')) {
+      return HERO_SOUND_MAP['sound-anti-mage-taunt'];
+    }
+    if (heroName.includes('wraith king')) {
+      return HERO_SOUND_MAP['hero-sounds-wraith-king-papich'];
+    }
+    return {
+      id: mod.id,
+      title: mod.title || mod.name || 'Звуковой мод',
+      hero: mod.hero || 'Dota 2',
+      file: 'audio/hero-sounds/dire-shred.mp3',
+      type: 'audio',
+      icon: 'fa-music'
     };
   }
 
@@ -4468,8 +4539,7 @@ window.playHeroSound = function(file, title, lineId = 'main_sound') {
   stopVoiceLine();
 
   if (!file) {
-    console.warn('playHeroSound: no file specified, playing signature effect');
-    playAudioEffect('default');
+    console.warn('playHeroSound: no file specified');
     return;
   }
 
@@ -4482,15 +4552,18 @@ window.playHeroSound = function(file, title, lineId = 'main_sound') {
 
   if (isVideo && videoEl) {
     if (videoSection) videoSection.classList.remove('hidden');
-    videoEl.src = encodeURI(file);
+    const targetSrc = encodeURI(file);
+    const currSrc = videoEl.getAttribute('src') || '';
+    if (!currSrc || !decodeURI(currSrc).includes(file.split('/').pop())) {
+      videoEl.src = targetSrc;
+    }
     videoEl.currentTime = 0;
     videoEl.volume = currentAudioVolume;
     videoEl.muted = false;
     videoEl.play().then(() => {
       updateAudioUI(true, { title: title || 'Звук мода' });
     }).catch(err => {
-      console.warn('Video playback error, fallback to audio effect:', err);
-      playAudioEffect('default');
+      console.warn('Video playback notice (play resumed):', err);
     });
     videoEl.onended = () => {
       currentPlayingId = null;
@@ -4507,20 +4580,19 @@ window.playHeroSound = function(file, title, lineId = 'main_sound') {
       updateAudioUI(false);
     };
     currentAudio.onerror = (e) => {
-      console.warn('Audio element error, falling back to synthesizer:', e);
+      console.warn('Audio playback notice:', e);
       currentPlayingId = null;
       updateAudioUI(false);
-      playAudioEffect('default');
     };
     currentAudio.play().catch(err => {
-      console.warn('Audio play() rejected, falling back to synthesizer:', err);
+      console.warn('Audio play() notice:', err);
       currentPlayingId = null;
       updateAudioUI(false);
-      playAudioEffect('default');
     });
   } catch (err) {
     console.error('Audio creation error:', err);
-    playAudioEffect('default');
+    currentPlayingId = null;
+    updateAudioUI(false);
   }
 };
 
@@ -4989,8 +5061,8 @@ window.openModDetail = function(id) {
           </button>
         `;
 
-        const voiceSetToUse = heroVoiceSet || CHARACTER_VOICE_SETS[heroKey] || CHARACTER_VOICE_SETS['default'];
-        if (voiceSetToUse && voiceSetToUse.lines) {
+        const voiceSetToUse = heroVoiceSet || (heroKey && heroKey !== 'default' && CHARACTER_VOICE_SETS[heroKey] ? CHARACTER_VOICE_SETS[heroKey] : null);
+        if (voiceSetToUse && voiceSetToUse.lines && voiceSetToUse !== CHARACTER_VOICE_SETS['default']) {
           voiceSetToUse.lines.slice(0, 4).forEach(line => {
             buttonsHtml += `
               <button 

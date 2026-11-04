@@ -516,7 +516,7 @@ function safeRenameSync(src, dst) {
 // Helper: Download with redirect support
 function downloadWithRedirect(url, targetPath, maxRedirects = 5) {
   return new Promise((resolve) => {
-    if (maxRedirects <= 0) return resolve({ success: false, message: 'Too many redirects' });
+    if (maxRedirects <= 0) return resolve({ success: false, message: 'Слишком много перенаправлений (redirect loop)' });
 
     try {
       const dir = path.dirname(targetPath);
@@ -524,7 +524,10 @@ function downloadWithRedirect(url, targetPath, maxRedirects = 5) {
     } catch (e) {}
 
     const client = url.startsWith('http://') ? http : https;
-    const req = client.get(url, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) DotaModHub/1.6.0' } }, (response) => {
+    const req = client.get(url, { 
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) DotaModHub/1.6.0' },
+      timeout: 45000
+    }, (response) => {
       if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
         let redirectUrl = response.headers.location;
         if (!redirectUrl.startsWith('http://') && !redirectUrl.startsWith('https://')) {
@@ -537,33 +540,57 @@ function downloadWithRedirect(url, targetPath, maxRedirects = 5) {
       }
 
       if (response.statusCode !== 200) {
-        return resolve({ success: false, message: `HTTP Error: ${response.statusCode}` });
+        return resolve({ success: false, message: `Ошибка сервера (HTTP ${response.statusCode})` });
       }
 
       const file = fs.createWriteStream(targetPath);
+      
+      response.on('error', (err) => {
+        try { file.destroy(); } catch (e) {}
+        try { if (fs.existsSync(targetPath)) fs.unlinkSync(targetPath); } catch (e) {}
+        resolve({ success: false, message: err.message || 'Ошибка передачи данных по сети' });
+      });
+
       response.pipe(file);
+
       file.on('finish', () => {
-        file.close(() => {
+        file.close((closeErr) => {
+          if (closeErr) {
+            try { if (fs.existsSync(targetPath)) fs.unlinkSync(targetPath); } catch (e) {}
+            return resolve({ success: false, message: closeErr.message });
+          }
+          if (!fs.existsSync(targetPath)) {
+            return resolve({ success: false, message: 'Файл мода не был сохранён на диск' });
+          }
           try {
             const stats = fs.statSync(targetPath);
             if (stats.size === 0) {
               try { fs.unlinkSync(targetPath); } catch (e) {}
               return resolve({ success: false, message: 'Загруженный файл пуст (0 байт)' });
             }
-          } catch (e) {}
-          resolve({ success: true });
+            resolve({ success: true, size: stats.size });
+          } catch (statErr) {
+            resolve({ success: false, message: statErr.message || 'Ошибка проверки размера файла' });
+          }
         });
       });
+
       file.on('error', (err) => {
         file.close(() => {
-          try { fs.unlinkSync(targetPath); } catch (e) {}
+          try { if (fs.existsSync(targetPath)) fs.unlinkSync(targetPath); } catch (e) {}
           resolve({ success: false, message: err.message });
         });
       });
     });
 
+    req.on('timeout', () => {
+      req.destroy();
+      try { if (fs.existsSync(targetPath)) fs.unlinkSync(targetPath); } catch (e) {}
+      resolve({ success: false, message: 'Таймаут соединения при загрузке мода (45 сек)' });
+    });
+
     req.on('error', (err) => {
-      try { fs.unlinkSync(targetPath); } catch (e) {}
+      try { if (fs.existsSync(targetPath)) fs.unlinkSync(targetPath); } catch (e) {}
       resolve({ success: false, message: err.message });
     });
   });
@@ -911,6 +938,21 @@ ipcMain.handle('dota:install-mod', async (event, { dotaPath, modId, modTitle, do
       sourceVpkPath = tempDownload;
     }
 
+    // Proactive check: Ensure source VPK exists on disk before file operations
+    if (!sourceVpkPath || !fs.existsSync(sourceVpkPath)) {
+      if (extractDir) { try { fs.rmSync(extractDir, { recursive: true, force: true }); } catch (e) {} }
+      try { if (fs.existsSync(tempDownload)) fs.unlinkSync(tempDownload); } catch (e) {}
+      return {
+        success: false,
+        message: 'Не найден исходный файл мода (.vpk) для установки. Проверьте соединение с интернетом и повторите попытку.'
+      };
+    }
+
+    try {
+      const destDir = path.dirname(targetPakPath);
+      if (!fs.existsSync(destDir)) fs.mkdirSync(destDir, { recursive: true });
+    } catch (e) {}
+
     // Windows-safe installation: safeCopyFile with dynamic allocation fallback
     try {
       await safeUnlink(targetDisabledPath);
@@ -926,14 +968,32 @@ ipcMain.handle('dota:install-mod', async (event, { dotaPath, modId, modTitle, do
         };
       }
 
-      // If initial target was locked by another process, allocate a guaranteed free pak number
-      const fallbackNum = getNextAvailablePakNumber(modsDir, manifest);
-      pakNumStr = fallbackNum;
-      targetPakName = `pak${pakNumStr}_dir.vpk`;
-      targetPakPath = path.join(modsDir, targetPakName);
-      targetDisabledPath = path.join(modsDir, `${targetPakName}.disabled`);
-      await safeUnlink(targetDisabledPath);
-      await safeCopyFile(sourceVpkPath, targetPakPath);
+      if (installErr.code === 'EBUSY' || installErr.code === 'EPERM') {
+        // If initial target was locked by another process, allocate a guaranteed free pak number
+        const fallbackNum = getNextAvailablePakNumber(modsDir, manifest);
+        pakNumStr = fallbackNum;
+        targetPakName = `pak${pakNumStr}_dir.vpk`;
+        targetPakPath = path.join(modsDir, targetPakName);
+        targetDisabledPath = path.join(modsDir, `${targetPakName}.disabled`);
+        try {
+          await safeUnlink(targetDisabledPath);
+          await safeCopyFile(sourceVpkPath, targetPakPath);
+        } catch (retryErr) {
+          if (extractDir) { try { fs.rmSync(extractDir, { recursive: true, force: true }); } catch (e) {} }
+          try { if (!isZip && fs.existsSync(tempDownload)) fs.unlinkSync(tempDownload); } catch (e) {}
+          return {
+            success: false,
+            message: `Файл заблокирован системой: ${retryErr.message}`
+          };
+        }
+      } else {
+        if (extractDir) { try { fs.rmSync(extractDir, { recursive: true, force: true }); } catch (e) {} }
+        try { if (!isZip && fs.existsSync(tempDownload)) fs.unlinkSync(tempDownload); } catch (e) {}
+        return {
+          success: false,
+          message: `Ошибка копирования файла мода: ${installErr.message}`
+        };
+      }
     }
 
     if (extractDir) {
