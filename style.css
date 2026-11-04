@@ -647,4 +647,22 @@ button:active {
   transform: translateY(-50%) scale(0.92) !important;
 }
 
+/* ========================================================
+   Anime.js Hardware Acceleration & Class Rules
+   ======================================================== */
+html.has-anime .mod-card,
+html.has-anime .hero-card-tile,
+html.has-anime .installed-mod-card,
+html.has-anime .mod-list-row,
+html.has-anime .hero-list-row,
+html.has-anime .recent-card {
+  animation: none !important;
+}
+
+.eq-bar {
+  transform-origin: bottom center;
+  will-change: transform;
+}
+
+
 
