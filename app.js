@@ -48,16 +48,16 @@ window.dotaAnime = (function() {
       targets.forEach(el => {
         el.classList.add('anime-appeared');
         el.style.opacity = '0';
-        el.style.transform = 'translateY(18px) scale(0.97)';
+        el.style.transform = 'translateY(16px) scale(0.97)';
       });
 
       anime({
         targets: targets,
         opacity: [0, 1],
-        translateY: [18, 0],
+        translateY: [16, 0],
         scale: [0.97, 1],
-        delay: anime.stagger(18, { start: 10 }),
-        duration: 360,
+        delay: anime.stagger(16, { start: 10 }),
+        duration: 340,
         easing: 'easeOutCubic',
         complete: function() {
           targets.forEach(el => {
@@ -79,16 +79,16 @@ window.dotaAnime = (function() {
       targets.forEach(el => {
         el.classList.add('anime-appeared');
         el.style.opacity = '0';
-        el.style.transform = 'translateX(20px) scale(0.96)';
+        el.style.transform = 'translateX(18px) scale(0.96)';
       });
 
       anime({
         targets: targets,
         opacity: [0, 1],
-        translateX: [20, 0],
+        translateX: [18, 0],
         scale: [0.96, 1],
-        delay: anime.stagger(22, { start: 15 }),
-        duration: 380,
+        delay: anime.stagger(20, { start: 15 }),
+        duration: 360,
         easing: 'easeOutCubic',
         complete: function() {
           targets.forEach(el => {
@@ -102,58 +102,78 @@ window.dotaAnime = (function() {
     // 3. Modal Dialog Smooth Spring Open (Backdrop + Panel Pop)
     animateModalOpen(modalEl) {
       if (!modalEl) return;
+      if (modalEl.dataset) delete modalEl.dataset.isClosing;
       modalEl.classList.remove('hidden');
       modalEl.style.display = 'flex';
       modalEl.style.pointerEvents = 'auto';
 
       if (!isAvailable()) return;
 
-      const panel = modalEl.querySelector('.panel-dark') || modalEl.firstElementChild;
+      const isLightbox = (modalEl.id === 'imageLightboxModal');
+      const panel = isLightbox 
+        ? modalEl.querySelector('#imageLightboxImg') 
+        : (modalEl.querySelector('.panel-dark') || modalEl.firstElementChild);
 
       anime.remove(modalEl);
+      modalEl.style.opacity = '0';
       anime({
         targets: modalEl,
         opacity: [0, 1],
-        duration: 220,
+        duration: 240,
         easing: 'easeOutQuad'
       });
 
       if (panel) {
         anime.remove(panel);
         panel.style.transformOrigin = 'center center';
+        panel.style.opacity = '0';
         anime({
           targets: panel,
           opacity: [0, 1],
-          scale: [0.91, 1],
-          translateY: [20, 0],
-          duration: 360,
-          easing: 'easeOutBack(1.2)'
+          scale: isLightbox ? [0.88, 1] : [0.92, 1],
+          translateY: isLightbox ? [0, 0] : [16, 0],
+          duration: 320,
+          easing: 'easeOutCubic',
+          complete: function() {
+            panel.style.opacity = '';
+            panel.style.transform = '';
+          }
         });
       }
     },
 
-    // 4. Modal Dialog Smooth Slide & Fade Close
+    // 4. Modal Dialog Smooth Slide & Fade Close (Non-abrupt, visible exit curve)
     animateModalClose(modalEl, onComplete) {
       if (!modalEl) return;
+      const isClosing = modalEl.dataset && modalEl.dataset.isClosing === 'true';
+      if (modalEl.classList.contains('hidden') || isClosing) {
+        if (onComplete) onComplete();
+        return;
+      }
+      if (modalEl.dataset) modalEl.dataset.isClosing = 'true';
+      modalEl.style.pointerEvents = 'none';
 
       if (!isAvailable()) {
         modalEl.classList.add('hidden');
         modalEl.style.display = 'none';
-        modalEl.style.pointerEvents = 'none';
+        if (modalEl.dataset) delete modalEl.dataset.isClosing;
         if (onComplete) onComplete();
         return;
       }
 
-      const panel = modalEl.querySelector('.panel-dark') || modalEl.firstElementChild;
+      const isLightbox = (modalEl.id === 'imageLightboxModal');
+      const panel = isLightbox 
+        ? modalEl.querySelector('#imageLightboxImg') 
+        : (modalEl.querySelector('.panel-dark') || modalEl.firstElementChild);
 
       if (panel) {
         anime.remove(panel);
         anime({
           targets: panel,
           opacity: [1, 0],
-          scale: [1, 0.94],
-          translateY: [0, 12],
-          duration: 170,
+          scale: isLightbox ? [1, 0.88] : [1, 0.93],
+          translateY: isLightbox ? [0, 8] : [0, 16],
+          duration: 240,
           easing: 'easeInQuad'
         });
       }
@@ -162,13 +182,14 @@ window.dotaAnime = (function() {
       anime({
         targets: modalEl,
         opacity: [1, 0],
-        duration: 180,
+        duration: 250,
         easing: 'easeInQuad',
         complete: function() {
           modalEl.classList.add('hidden');
           modalEl.style.display = 'none';
-          modalEl.style.pointerEvents = 'none';
+          modalEl.style.pointerEvents = '';
           modalEl.style.opacity = '';
+          if (modalEl.dataset) delete modalEl.dataset.isClosing;
           if (panel) {
             panel.style.opacity = '';
             panel.style.transform = '';
@@ -178,7 +199,155 @@ window.dotaAnime = (function() {
       });
     },
 
-    // 5. Toast Notifications (Elastic Spring In, Smooth Slide Out)
+    // 5. Smooth View Switcher between Catalog and My Mods
+    switchViews(fromEl, toEl, onSwitched) {
+      if (!isAvailable() || !fromEl || !toEl) {
+        if (fromEl) fromEl.classList.add('hidden');
+        if (toEl) toEl.classList.remove('hidden');
+        if (onSwitched) onSwitched();
+        return;
+      }
+
+      anime.remove(fromEl);
+      anime.remove(toEl);
+
+      anime({
+        targets: fromEl,
+        opacity: [1, 0],
+        translateY: [0, -10],
+        duration: 150,
+        easing: 'easeInQuad',
+        complete: () => {
+          fromEl.classList.add('hidden');
+          fromEl.style.opacity = '';
+          fromEl.style.transform = '';
+
+          toEl.classList.remove('hidden');
+          toEl.style.opacity = '0';
+          toEl.style.transform = 'translateY(12px)';
+
+          if (onSwitched) onSwitched();
+
+          anime({
+            targets: toEl,
+            opacity: [0, 1],
+            translateY: [12, 0],
+            duration: 260,
+            easing: 'easeOutCubic',
+            complete: () => {
+              toEl.style.opacity = '';
+              toEl.style.transform = '';
+            }
+          });
+        }
+      });
+    },
+
+    // 6. Smooth Container Transition (Filters, Categories, Heroes, View Modes)
+    transitionContainer(container, updateCallback) {
+      if (!isAvailable() || !container || !container.children.length) {
+        if (updateCallback) updateCallback();
+        this.animateCards(container);
+        return;
+      }
+
+      anime.remove(container);
+      anime({
+        targets: container,
+        opacity: [1, 0.25],
+        translateY: [0, -6],
+        duration: 110,
+        easing: 'easeInQuad',
+        complete: () => {
+          if (updateCallback) updateCallback();
+          anime({
+            targets: container,
+            opacity: [0.25, 1],
+            translateY: [6, 0],
+            duration: 220,
+            easing: 'easeOutCubic',
+            complete: () => {
+              container.style.opacity = '';
+              container.style.transform = '';
+            }
+          });
+          this.animateCards(container);
+        }
+      });
+    },
+
+    // 7. Modal Preview Mod Slide (Next / Prev smooth gallery wipe)
+    animatePreviewSwitch(direction, updateCallback) {
+      if (!isAvailable()) {
+        if (updateCallback) updateCallback();
+        return;
+      }
+
+      const imgEl = document.getElementById('modalImage');
+      const videoContainer = document.getElementById('modalMediaVideoContainer');
+      const activeMedia = (videoContainer && !videoContainer.classList.contains('hidden')) ? videoContainer : imgEl;
+      const titleEl = document.getElementById('modalTitle');
+      const heroEl = document.getElementById('modalHero');
+      const badgesEl = document.getElementById('modalBadgesContainer');
+      const targets = [activeMedia, titleEl, heroEl, badgesEl].filter(Boolean);
+
+      const outX = direction > 0 ? -24 : 24;
+      const inX = direction > 0 ? 24 : -24;
+
+      anime.remove(targets);
+      anime({
+        targets: targets,
+        opacity: [1, 0],
+        translateX: [0, outX],
+        duration: 120,
+        easing: 'easeInQuad',
+        complete: () => {
+          if (updateCallback) updateCallback();
+
+          const freshImg = document.getElementById('modalImage');
+          const freshVideo = document.getElementById('modalMediaVideoContainer');
+          const freshMedia = (freshVideo && !freshVideo.classList.contains('hidden')) ? freshVideo : freshImg;
+          const freshTitle = document.getElementById('modalTitle');
+          const freshHero = document.getElementById('modalHero');
+          const freshBadges = document.getElementById('modalBadgesContainer');
+          const freshTargets = [freshMedia, freshTitle, freshHero, freshBadges].filter(Boolean);
+
+          anime.remove(freshTargets);
+          anime({
+            targets: freshTargets,
+            opacity: [0, 1],
+            translateX: [inX, 0],
+            duration: 260,
+            easing: 'easeOutCubic',
+            complete: () => {
+              freshTargets.forEach(el => {
+                el.style.opacity = '';
+                el.style.transform = '';
+              });
+            }
+          });
+        }
+      });
+    },
+
+    animatePreviewSlide(mediaEl, direction = 1) {
+      if (!isAvailable() || !mediaEl) return;
+      anime.remove(mediaEl);
+      const fromX = direction > 0 ? 28 : -28;
+      anime({
+        targets: mediaEl,
+        translateX: [fromX, 0],
+        opacity: [0.35, 1],
+        duration: 260,
+        easing: 'easeOutCubic',
+        complete: function() {
+          mediaEl.style.transform = '';
+          mediaEl.style.opacity = '';
+        }
+      });
+    },
+
+    // 8. Toast Notifications (Elastic Spring In, Smooth Slide Out)
     animateToastEnter(toastEl) {
       if (!isAvailable() || !toastEl) return;
       anime({
@@ -223,7 +392,7 @@ window.dotaAnime = (function() {
       });
     },
 
-    // 6. Favorite Heart Elastic Pop & Wobble
+    // 9. Favorite Heart Elastic Pop & Wobble
     animateHeart(btnOrIcon) {
       if (!isAvailable() || !btnOrIcon) return;
       const target = (btnOrIcon.tagName === 'I') ? btnOrIcon : (btnOrIcon.querySelector('i') || btnOrIcon);
@@ -237,7 +406,7 @@ window.dotaAnime = (function() {
       });
     },
 
-    // 7. Badge Pop-in
+    // 10. Badge Pop-in
     animateBadgePop(badgeEl) {
       if (!isAvailable() || !badgeEl) return;
       anime.remove(badgeEl);
@@ -250,7 +419,7 @@ window.dotaAnime = (function() {
       });
     },
 
-    // 8. Interactive Button Press Spring
+    // 11. Interactive Button Press Spring
     animateButtonPress(btn) {
       if (!isAvailable() || !btn) return;
       anime({
@@ -261,7 +430,7 @@ window.dotaAnime = (function() {
       });
     },
 
-    // 9. Main Page View Crossfade
+    // 12. Main Page View Crossfade
     animatePageEnter(viewEl) {
       if (!viewEl) return;
       if (!isAvailable()) return;
@@ -275,7 +444,7 @@ window.dotaAnime = (function() {
       });
     },
 
-    // 10. Image Lightbox Zoom
+    // 13. Image Lightbox Zoom
     animateLightboxZoom(imgEl) {
       if (!isAvailable() || !imgEl) return;
       anime.remove(imgEl);
@@ -288,25 +457,7 @@ window.dotaAnime = (function() {
       });
     },
 
-    // 11. Modal Preview Mod Slide (Horizontal swipe feel)
-    animatePreviewSlide(mediaEl, direction = 1) {
-      if (!isAvailable() || !mediaEl) return;
-      anime.remove(mediaEl);
-      const fromX = direction > 0 ? 30 : -30;
-      anime({
-        targets: mediaEl,
-        translateX: [fromX, 0],
-        opacity: [0.35, 1],
-        duration: 280,
-        easing: 'easeOutCubic',
-        complete: function() {
-          mediaEl.style.transform = '';
-          mediaEl.style.opacity = '';
-        }
-      });
-    },
-
-    // 12. Audio Equalizer Wave Animation
+    // 14. Audio Equalizer Wave Animation
     startAudioVisualizer(visualizerEl) {
       if (!isAvailable() || !visualizerEl) return;
       const bars = visualizerEl.querySelectorAll('.eq-bar');
@@ -335,7 +486,7 @@ window.dotaAnime = (function() {
       }
     },
 
-    // 13. Brand Logo Micro-interaction
+    // 15. Brand Logo Micro-interaction
     initLogoInteractive() {
       if (!isAvailable()) return;
       const logoBtn = document.getElementById('headerLogoBtn');
@@ -3450,26 +3601,42 @@ function renderMods(resetCount = true) {
         ? allHeroes.filter(h => h.key !== 'all').map(h => createHeroCardTileHTML(h)).join('')
         : allItems.filter(i => i.key !== 'all').map(i => createItemCardTileHTML(i)).join('');
 
-      modsContainer.innerHTML = `
-        ${tabsHeaderHTML}
-        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4 gap-3.5">
-          ${tilesHTML}
-        </div>
-      `;
-      if (window.dotaAnime) window.dotaAnime.animateCards(modsContainer);
+      const renderGrid = () => {
+        modsContainer.innerHTML = `
+          ${tabsHeaderHTML}
+          <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4 gap-3.5">
+            ${tilesHTML}
+          </div>
+        `;
+      };
+
+      if (window.dotaAnime && window.dotaAnime.isAvailable() && modsContainer && modsContainer.children && modsContainer.children.length > 0) {
+        window.dotaAnime.transitionContainer(modsContainer, renderGrid);
+      } else {
+        renderGrid();
+        if (window.dotaAnime) window.dotaAnime.animateCards(modsContainer);
+      }
       return;
     } else {
       const rowsHTML = isHeroes 
         ? allHeroes.filter(h => h.key !== 'all').map(h => createHeroListRowHTML(h)).join('')
         : allItems.filter(i => i.key !== 'all').map(i => createItemListRowHTML(i)).join('');
 
-      modsContainer.innerHTML = `
-        ${tabsHeaderHTML}
-        <div class="space-y-2">
-          ${rowsHTML}
-        </div>
-      `;
-      if (window.dotaAnime) window.dotaAnime.animateCards(modsContainer);
+      const renderRows = () => {
+        modsContainer.innerHTML = `
+          ${tabsHeaderHTML}
+          <div class="space-y-2">
+            ${rowsHTML}
+          </div>
+        `;
+      };
+
+      if (window.dotaAnime && window.dotaAnime.isAvailable() && modsContainer && modsContainer.children && modsContainer.children.length > 0) {
+        window.dotaAnime.transitionContainer(modsContainer, renderRows);
+      } else {
+        renderRows();
+        if (window.dotaAnime) window.dotaAnime.animateCards(modsContainer);
+      }
       return;
     }
   }
@@ -3504,14 +3671,21 @@ function renderMods(resetCount = true) {
     </div>
   ` : '';
 
-  modsContainer.innerHTML = `
-    ${activeBannerHTML}
-    ${cardsHTML}
-    ${sentinelHTML}
-  `;
+  const renderFilteredCards = () => {
+    modsContainer.innerHTML = `
+      ${activeBannerHTML}
+      ${cardsHTML}
+      ${sentinelHTML}
+    `;
+    setupInfiniteScrollObserver();
+  };
 
-  if (window.dotaAnime) window.dotaAnime.animateCards(modsContainer);
-  setupInfiniteScrollObserver();
+  if (window.dotaAnime && window.dotaAnime.isAvailable() && modsContainer && modsContainer.children && modsContainer.children.length > 0) {
+    window.dotaAnime.transitionContainer(modsContainer, renderFilteredCards);
+  } else {
+    renderFilteredCards();
+    if (window.dotaAnime) window.dotaAnime.animateCards(modsContainer);
+  }
 }
 
 // Progressive Chunk Loader & Observer
@@ -4959,10 +5133,14 @@ window.openModDetail = function(id) {
   if (prevBtn) prevBtn.style.display = canNavigate ? 'flex' : 'none';
   if (nextBtn) nextBtn.style.display = canNavigate ? 'flex' : 'none';
 
-  if (window.dotaAnime) {
-    window.dotaAnime.animateModalOpen(modModal);
-  } else {
-    modModal.classList.remove('hidden');
+  const isAlreadyOpen = !modModal.classList.contains('hidden') && modModal.style.display !== 'none';
+  if (!isAlreadyOpen) {
+    if (window.dotaAnime) {
+      window.dotaAnime.animateModalOpen(modModal);
+    } else {
+      modModal.classList.remove('hidden');
+      modModal.style.display = 'flex';
+    }
   }
   document.body.style.overflow = 'hidden';
 };
@@ -4974,12 +5152,14 @@ window.navigatePreview = function(direction) {
   if (currentPreviewIndex < 0) currentPreviewIndex = currentPreviewList.length - 1;
   if (currentPreviewIndex >= currentPreviewList.length) currentPreviewIndex = 0;
   const nextMod = currentPreviewList[currentPreviewIndex];
-  if (nextMod) {
+  if (!nextMod) return;
+
+  if (window.dotaAnime && window.dotaAnime.isAvailable()) {
+    window.dotaAnime.animatePreviewSwitch(direction, () => {
+      openModDetail(nextMod.id);
+    });
+  } else {
     openModDetail(nextMod.id);
-    const mediaEl = document.getElementById('modalImage') || document.getElementById('modalMediaVideoContainer');
-    if (window.dotaAnime && mediaEl) {
-      window.dotaAnime.animatePreviewSlide(mediaEl, direction);
-    }
   }
 };
 
@@ -5622,54 +5802,48 @@ window.switchMainPage = function(page) {
   const activeTabClass = "h-8 px-4 rounded-lg text-xs font-bold transition-all flex items-center gap-2 bg-indigo-600 text-white shadow-sm shadow-indigo-600/30";
   const inactiveTabClass = "h-8 px-4 rounded-lg text-xs font-semibold transition-all flex items-center gap-2 text-slate-400 hover:text-white hover:bg-white/[0.04]";
 
-  if (page === 'mymods') {
-    if (catalogView) {
-      catalogView.classList.add('hidden');
-      catalogView.classList.remove('page-fade-enter');
-    }
-    if (myModsView) {
-      myModsView.classList.remove('hidden', 'page-fade-enter');
-      if (window.dotaAnime) {
-        window.dotaAnime.animatePageEnter(myModsView);
-      } else {
-        void myModsView.offsetWidth; // re-trigger transition
-        myModsView.classList.add('page-fade-enter');
-      }
-    }
-    if (searchWrap) searchWrap.classList.add('opacity-0', 'pointer-events-none');
+  const isGoingToMyMods = (page === 'mymods');
+  const fromView = isGoingToMyMods ? catalogView : myModsView;
+  const toView = isGoingToMyMods ? myModsView : catalogView;
 
-    if (navCatalog) navCatalog.className = inactiveTabClass;
-    if (navMyMods) navMyMods.className = activeTabClass;
+  // Visual Tab indicator update with spring press
+  if (navCatalog && navMyMods) {
+    navCatalog.className = isGoingToMyMods ? inactiveTabClass : activeTabClass;
+    navMyMods.className = isGoingToMyMods ? activeTabClass : inactiveTabClass;
+    const activeBtn = isGoingToMyMods ? navMyMods : navCatalog;
+    if (window.dotaAnime && window.dotaAnime.isAvailable()) {
+      window.dotaAnime.animateButtonPress(activeBtn);
+    }
+  }
 
+  if (searchWrap) {
+    if (isGoingToMyMods) {
+      searchWrap.classList.add('opacity-0', 'pointer-events-none');
+    } else {
+      searchWrap.classList.remove('opacity-0', 'pointer-events-none');
+    }
+  }
+
+  if (isGoingToMyMods) {
     refreshInstalledMods();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
     if (typeof window.updateDiscordPresence === 'function') {
       window.updateDiscordPresence('mymods');
     }
   } else {
-    // catalog
-    if (catalogView) {
-      catalogView.classList.remove('hidden', 'page-fade-enter');
-      if (window.dotaAnime) {
-        window.dotaAnime.animatePageEnter(catalogView);
-      } else {
-        void catalogView.offsetWidth; // re-trigger transition
-        catalogView.classList.add('page-fade-enter');
-      }
-    }
-    if (myModsView) {
-      myModsView.classList.add('hidden');
-      myModsView.classList.remove('page-fade-enter');
-    }
-    if (searchWrap) searchWrap.classList.remove('opacity-0', 'pointer-events-none');
-
-    if (navCatalog) navCatalog.className = activeTabClass;
-    if (navMyMods) navMyMods.className = inactiveTabClass;
-
-    window.scrollTo({ top: 0, behavior: 'smooth' });
     if (typeof window.updateDiscordPresence === 'function') {
       window.updateDiscordPresence('catalog');
     }
+  }
+
+  // Smooth Crossfade View Switch
+  if (window.dotaAnime && window.dotaAnime.isAvailable() && fromView && toView && !fromView.classList.contains('hidden')) {
+    window.dotaAnime.switchViews(fromView, toView, () => {
+      window.scrollTo({ top: 0, behavior: 'instant' });
+    });
+  } else {
+    if (fromView) fromView.classList.add('hidden');
+    if (toView) toView.classList.remove('hidden');
+    window.scrollTo({ top: 0, behavior: 'instant' });
   }
 };
 
@@ -6949,17 +7123,25 @@ window.openUpdateModal = async function() {
     progContainer.style.display = 'none';
   }
 
-  modal.classList.remove('hidden');
-  modal.style.display = 'flex';
-  modal.style.pointerEvents = 'auto';
+  if (window.dotaAnime) {
+    window.dotaAnime.animateModalOpen(modal);
+  } else {
+    modal.classList.remove('hidden');
+    modal.style.display = 'flex';
+    modal.style.pointerEvents = 'auto';
+  }
 };
 
 window.closeUpdateModal = function() {
   const modal = document.getElementById('updateModal');
   if (modal) {
-    modal.classList.add('hidden');
-    modal.style.display = 'none';
-    modal.style.pointerEvents = 'none';
+    if (window.dotaAnime) {
+      window.dotaAnime.animateModalClose(modal);
+    } else {
+      modal.classList.add('hidden');
+      modal.style.display = 'none';
+      modal.style.pointerEvents = 'none';
+    }
   }
 };
 

@@ -655,7 +655,11 @@ html.has-anime .hero-card-tile,
 html.has-anime .installed-mod-card,
 html.has-anime .mod-list-row,
 html.has-anime .hero-list-row,
-html.has-anime .recent-card {
+html.has-anime .recent-card,
+html.has-anime .modal-overlay:not(.hidden),
+html.has-anime .modal-overlay:not(.hidden) > div,
+html.has-anime .modal-overlay:not(.hidden) .panel-dark,
+html.has-anime .page-fade-enter {
   animation: none !important;
 }
 
