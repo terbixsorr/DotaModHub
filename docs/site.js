@@ -534,28 +534,82 @@ function initFaqAccordion() {
   });
 }
 
-// 8. Fetch GitHub Releases Live Info
+// 8. Fetch GitHub Releases Live Info + Download Count
 async function fetchGitHubReleaseInfo() {
   try {
-    const res = await fetch('https://api.github.com/repos/terbixsorr/DotaModHub/releases/latest');
-    if (!res.ok) return;
-    const data = await res.json();
+    // Fetch all releases to sum total downloads
+    const [latestRes, allRes] = await Promise.all([
+      fetch('https://api.github.com/repos/terbixsorr/DotaModHub/releases/latest'),
+      fetch('https://api.github.com/repos/terbixsorr/DotaModHub/releases?per_page=100')
+    ]);
 
-    const tagBadge = document.getElementById('githubReleaseTag');
-    if (tagBadge && data.tag_name) {
-      tagBadge.textContent = data.tag_name;
+    // Latest release info
+    if (latestRes.ok) {
+      const data = await latestRes.json();
+
+      const tagBadge = document.getElementById('githubReleaseTag');
+      if (tagBadge && data.tag_name) {
+        tagBadge.textContent = data.tag_name;
+      }
+      // Also update stats strip version badge
+      const tagStat = document.getElementById('githubReleaseTagStat');
+      if (tagStat && data.tag_name) {
+        tagStat.textContent = data.tag_name;
+      }
+
+      const sizeBadge = document.getElementById('exeFileSize');
+      if (sizeBadge && data.assets && data.assets.length > 0) {
+        const exeAsset = data.assets.find(a => a.name.endsWith('.exe'));
+        if (exeAsset) {
+          sizeBadge.textContent = (exeAsset.size / (1024 * 1024)).toFixed(0) + ' MB';
+        }
+      }
     }
 
-    const sizeBadge = document.getElementById('exeFileSize');
-    if (sizeBadge && data.assets && data.assets.length > 0) {
-      const exeAsset = data.assets.find(a => a.name.endsWith('.exe'));
-      if (exeAsset) {
-        sizeBadge.textContent = (exeAsset.size / (1024 * 1024)).toFixed(0) + ' MB';
+    // Total downloads across ALL releases
+    if (allRes.ok) {
+      const releases = await allRes.json();
+      let total = 0;
+      releases.forEach(release => {
+        (release.assets || []).forEach(asset => {
+          total += asset.download_count || 0;
+        });
+      });
+
+      // Animate counter
+      const el = document.getElementById('totalDownloads');
+      if (el) {
+        animateCounter(el, total);
+      }
+
+      // Also update hero counter if present
+      const heroEl = document.getElementById('heroDownloadCount');
+      if (heroEl) {
+        animateCounter(heroEl, total);
       }
     }
   } catch (e) {
     console.debug('GitHub API notice:', e);
   }
+}
+
+// Smooth animated number counter
+function animateCounter(el, target) {
+  if (!el) return;
+  const duration = 2000;
+  const start = performance.now();
+  const startVal = 0;
+
+  function update(now) {
+    const elapsed = now - start;
+    const progress = Math.min(elapsed / duration, 1);
+    // Ease out cubic
+    const eased = 1 - Math.pow(1 - progress, 3);
+    const current = Math.floor(startVal + (target - startVal) * eased);
+    el.textContent = current.toLocaleString('ru-RU');
+    if (progress < 1) requestAnimationFrame(update);
+  }
+  requestAnimationFrame(update);
 }
 
 // 9. Anime.js Entrance & Float Physics

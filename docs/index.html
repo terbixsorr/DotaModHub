@@ -62,10 +62,45 @@
   </header>
 
   <!-- Hero Section -->
-  <section class="pt-24 md:pt-32 lg:pt-40 pb-20 text-center">
+  <section class="pt-24 md:pt-32 lg:pt-40 pb-10 text-center">
     <h1 class="text-4xl md:text-5xl font-extrabold text-white mb-4 anime-hero-fade">DotaMod Hub</h1>
     <p class="text-lg md:text-xl text-slate-300 mb-6 max-w-2xl mx-auto anime-hero-fade">Безопасные моды для Dota 2. Полностью совместимы с VAC, легко устанавливаются и позволяют персонализировать игру.</p>
-    <a href="#download" class="inline-block px-8 py-3 bg-indigo-600 text-white rounded-xl shadow-lg hover:bg-indigo-500 transition-colors anime-float-mockup">Скачать сейчас</a>
+    <a href="https://github.com/terbixsorr/DotaModHub/releases/latest" target="_blank" rel="noopener" class="inline-flex items-center gap-2 px-8 py-3 bg-indigo-600 text-white rounded-xl shadow-lg shadow-indigo-500/30 hover:bg-indigo-500 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] anime-float-mockup font-semibold">
+      <i class="fa-solid fa-download"></i>Скачать сейчас
+    </a>
+  </section>
+
+  <!-- Stats Strip — Downloads Counter -->
+  <section class="py-10">
+    <div class="max-w-4xl mx-auto grid grid-cols-1 sm:grid-cols-3 gap-4 px-6">
+      <!-- Total Downloads -->
+      <div class="glass-panel rounded-2xl p-6 text-center border border-indigo-500/20 shadow-lg shadow-indigo-500/10 hover:scale-[1.02] transition-transform duration-200">
+        <div class="flex items-center justify-center gap-2 mb-2">
+          <i class="fa-solid fa-download text-indigo-400 text-xl"></i>
+          <span class="text-xs font-mono uppercase text-slate-400 tracking-wider">Скачиваний</span>
+        </div>
+        <div class="text-3xl font-black text-white" id="totalDownloads">—</div>
+        <div class="text-xs text-slate-500 mt-1">через GitHub Releases</div>
+      </div>
+      <!-- Version Badge -->
+      <div class="glass-panel rounded-2xl p-6 text-center border border-purple-500/20 shadow-lg shadow-purple-500/10 hover:scale-[1.02] transition-transform duration-200">
+        <div class="flex items-center justify-center gap-2 mb-2">
+          <i class="fa-solid fa-tag text-purple-400 text-xl"></i>
+          <span class="text-xs font-mono uppercase text-slate-400 tracking-wider">Версия</span>
+        </div>
+        <div class="text-3xl font-black text-white" id="githubReleaseTagStat">v1.6.0</div>
+        <div class="text-xs text-slate-500 mt-1">актуальный релиз</div>
+      </div>
+      <!-- VAC Safe -->
+      <div class="glass-panel rounded-2xl p-6 text-center border border-emerald-500/20 shadow-lg shadow-emerald-500/10 hover:scale-[1.02] transition-transform duration-200">
+        <div class="flex items-center justify-center gap-2 mb-2">
+          <i class="fa-solid fa-shield-halved text-emerald-400 text-xl"></i>
+          <span class="text-xs font-mono uppercase text-slate-400 tracking-wider">VAC‑Статус</span>
+        </div>
+        <div class="text-3xl font-black text-emerald-400">100%</div>
+        <div class="text-xs text-slate-500 mt-1">безопасно</div>
+      </div>
+    </div>
   </section>
 
   <!-- Features Grid -->
