@@ -1,0 +1,143 @@
+/* DotaMod Hub — Landing Page Stylesheet
+ * Designed to Dark Obsidian / Glassmorphism / Cyber Glow Standards
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+:root {
+  --bg-deep: #080b11;
+  --bg-surface: #0f172a;
+  --bg-card: rgba(17, 24, 39, 0.75);
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-glow: rgba(99, 102, 241, 0.35);
+  --accent-indigo: #6366f1;
+  --accent-cyan: #06b6d4;
+  --accent-purple: #a855f7;
+  --accent-emerald: #10b981;
+  --accent-red: #ef4444;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  background-color: var(--bg-deep);
+  color: #f8fafc;
+}
+
+body {
+  overflow-x: hidden;
+  background: radial-gradient(circle at 50% 0%, rgba(99, 102, 241, 0.12) 0%, transparent 50%),
+              radial-gradient(circle at 100% 30%, rgba(6, 182, 212, 0.08) 0%, transparent 40%),
+              radial-gradient(circle at 0% 70%, rgba(168, 85, 247, 0.08) 0%, transparent 40%),
+              var(--bg-deep);
+  min-height: 100vh;
+}
+
+/* Custom Sleek Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #080b11;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.25);
+  border-radius: 9999px;
+  border: 2px solid #080b11;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(99, 102, 241, 0.5);
+}
+
+/* Glassmorphism Classes */
+.glass-panel {
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border-subtle);
+}
+
+.glass-panel-hover {
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.glass-panel-hover:hover {
+  background: rgba(22, 32, 54, 0.85);
+  border-color: rgba(99, 102, 241, 0.4);
+  transform: translateY(-3px);
+  box-shadow: 0 16px 32px -8px rgba(0, 0, 0, 0.6), 0 0 24px -4px rgba(99, 102, 241, 0.2);
+}
+
+/* Hero Glow & Text Gradients */
+.text-gradient-primary {
+  background: linear-gradient(135deg, #ffffff 10%, #cbd5e1 50%, #94a3b8 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.text-gradient-accent {
+  background: linear-gradient(135deg, #818cf8 0%, #c084fc 50%, #38bdf8 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.glow-btn {
+  position: relative;
+  transition: all 0.25s ease-out;
+  box-shadow: 0 4px 20px rgba(99, 102, 241, 0.35);
+}
+.glow-btn:hover {
+  transform: scale(1.02);
+  box-shadow: 0 6px 28px rgba(99, 102, 241, 0.55), 0 0 40px rgba(99, 102, 241, 0.25);
+}
+.glow-btn:active {
+  transform: scale(0.98);
+}
+
+/* Mockup Frame & Shadows */
+.mockup-frame {
+  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.9), 
+              0 0 40px -10px rgba(99, 102, 241, 0.25),
+              inset 0 1px 1px rgba(255, 255, 255, 0.15);
+}
+
+/* Equalizer Bars Animation */
+.eq-bar {
+  animation: eqBounce 1.2s ease-in-out infinite alternate;
+}
+.eq-bar:nth-child(1) { animation-delay: 0.1s; height: 40%; }
+.eq-bar:nth-child(2) { animation-delay: 0.3s; height: 85%; }
+.eq-bar:nth-child(3) { animation-delay: 0.2s; height: 60%; }
+.eq-bar:nth-child(4) { animation-delay: 0.4s; height: 100%; }
+
+@keyframes eqBounce {
+  0% { transform: scaleY(0.3); }
+  100% { transform: scaleY(1); }
+}
+
+/* Floating animation */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+/* Pulse Glow */
+@keyframes pulseGlow {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(1.05); }
+}
+.pulse-glow {
+  animation: pulseGlow 4s ease-in-out infinite;
+}
+
+/* Code / Monospace */
+.font-mono-code {
+  font-family: 'JetBrains Mono', monospace;
+}
