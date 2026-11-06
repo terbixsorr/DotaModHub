@@ -3,186 +3,464 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DotaMod Hub – Landing Page</title>
-  <meta name="description" content="Коллекция модов для Dota 2 с безопасностью VAC. Скачать, просмотреть и установить.">
-  <meta name="keywords" content="Dota 2, моды, VAC safe, арканы, звуковые моды, карты">
+  <title>DotaMod Hub — Моды для Dota 2</title>
+  <meta name="description" content="Коллекция 1800+ VAC-безопасных модов для Dota 2. Арканы, звуки, фоны, карты.">
   <link rel="icon" type="image/png" href="assets/logo.png">
-  <!-- OpenGraph -->
-  <meta property="og:title" content="DotaMod Hub – Landing Page" />
-  <meta property="og:description" content="Коллекция безопасных модов для Dota 2" />
-  <meta property="og:image" content="assets/wallpapers/radiant_dire.jpg" />
-  <meta property="og:type" content="website" />
-  <!-- Tailwind CSS & FontAwesome -->
+  <meta property="og:title" content="DotaMod Hub — Моды для Dota 2">
+  <meta property="og:description" content="1800+ безопасных модов. Арканы, звуки, фоны, карты.">
+  <meta property="og:image" content="assets/wallpapers/radiant_dire.jpg">
+  <meta property="og:type" content="website">
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-  <!-- Custom Styles -->
   <link rel="stylesheet" href="style.css">
+  <style>
+    /* Page system */
+    .page { display: none; }
+    .page.active { display: block; }
+
+    /* Catalog card hover */
+    .mod-card { transition: transform .2s ease, box-shadow .2s ease; }
+    .mod-card:hover { transform: translateY(-4px) scale(1.01); box-shadow: 0 20px 40px rgba(99,102,241,.25); }
+
+    /* Rarity colors */
+    .rarity-arcana    { color: #f59e0b; border-color: #f59e0b40; }
+    .rarity-immortal  { color: #a78bfa; border-color: #a78bfa40; }
+    .rarity-mythical  { color: #818cf8; border-color: #818cf840; }
+    .rarity-legendary { color: #34d399; border-color: #34d39940; }
+    .rarity-rare      { color: #60a5fa; border-color: #60a5fa40; }
+
+    /* Search bar */
+    .search-input::placeholder { color: #64748b; }
+
+    /* Filter tab active */
+    .filter-tab.active {
+      background: linear-gradient(135deg, #4f46e5, #7c3aed);
+      color: white;
+      box-shadow: 0 4px 15px rgba(79,70,229,.35);
+    }
+
+    /* Audio progress bar */
+    .audio-bar { height: 3px; background: #334155; border-radius: 3px; overflow: hidden; }
+    .audio-progress { height: 100%; background: linear-gradient(90deg, #6366f1, #a855f7); width: 0%; transition: width .1s linear; }
+
+    /* Equalizer bars animation */
+    @keyframes eq { 0%,100%{height:4px} 50%{height:14px} }
+    .eq-bar { display:inline-block; width:3px; background:#4ade80; border-radius:2px; animation: eq 0.6s ease infinite; }
+    .eq-bar:nth-child(2){ animation-delay:.1s }
+    .eq-bar:nth-child(3){ animation-delay:.2s }
+    .eq-bar:nth-child(4){ animation-delay:.3s }
+
+    /* Scroll styles */
+    ::-webkit-scrollbar { width:6px; height:6px }
+    ::-webkit-scrollbar-track { background:#0f172a }
+    ::-webkit-scrollbar-thumb { background:#334155; border-radius:4px }
+    ::-webkit-scrollbar-thumb:hover { background:#475569 }
+
+    /* Modal backdrop */
+    .modal-enter { animation: modalIn .2s ease-out; }
+    @keyframes modalIn { from{opacity:0;transform:scale(.95)} to{opacity:1;transform:scale(1)} }
+
+    /* Nav active */
+    .nav-btn.active { color: #818cf8; }
+    .nav-btn.active::after { content:''; display:block; height:2px; background:#6366f1; border-radius:2px; margin-top:2px; }
+
+    /* Glass panel */
+    .glass-panel {
+      background: rgba(15,23,42,0.6);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    /* Glow button */
+    .glow-btn { box-shadow: 0 0 20px rgba(99,102,241,.4); }
+    .glow-btn:hover { box-shadow: 0 0 32px rgba(99,102,241,.65); }
+
+    /* Page transition */
+    .page.active { animation: fadeIn .25s ease; }
+    @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+  </style>
 </head>
-<body class="text-slate-200 antialiased selection:bg-indigo-500 selection:text-white">
+<body class="text-slate-200 antialiased min-h-screen" style="background: #080b11;">
+
   <!-- Ambient Glows -->
   <div class="fixed inset-0 pointer-events-none overflow-hidden z-0">
-    <div class="absolute top-[-15%] left-[20%] w-[600px] h-[600px] bg-indigo-600/15 rounded-full blur-[140px] anime-pulse-glow"></div>
-    <div class="absolute top-[40%] right-[-10%] w-[500px] h-[500px] bg-purple-600/10 rounded-full blur-[140px] anime-pulse-glow" style="animation-delay: -2s;"></div>
-    <div class="absolute bottom-[-10%] left-[-10%] w-[600px] h-[600px] bg-cyan-600/10 rounded-full blur-[140px] anime-pulse-glow" style="animation-delay: -4s;"></div>
+    <div class="absolute top-[-10%] left-[15%] w-[700px] h-[700px] rounded-full blur-[160px]" style="background:rgba(79,70,229,0.12)"></div>
+    <div class="absolute top-[50%] right-[-5%] w-[500px] h-[500px] rounded-full blur-[140px]" style="background:rgba(124,58,237,0.08)"></div>
+    <div class="absolute bottom-[-5%] left-[-5%] w-[600px] h-[600px] rounded-full blur-[150px]" style="background:rgba(6,182,212,0.07)"></div>
   </div>
 
-  <!-- Header -->
-  <header id="mainNav" class="fixed top-0 left-0 right-0 z-50 transition-all duration-300 border-b border-transparent py-4 px-6 sm:px-10 backdrop-blur-xl bg-slate-900/30">
-    <div class="max-w-7xl mx-auto flex items-center justify-between">
-      <a href="#" class="flex items-center gap-3 group">
-        <div class="relative w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 p-[1px] shadow-lg shadow-indigo-500/20 group-hover:scale-105 transition-transform">
-          <div class="w-full h-full bg-slate-950 rounded-[11px] flex items-center justify-center overflow-hidden">
-            <img src="assets/logo.png" alt="DotaMod Hub" class="w-7 h-7 object-contain" />
+  <!-- ═══ HEADER ═══ -->
+  <header class="fixed top-0 left-0 right-0 z-50 border-b border-white/5" style="background:rgba(8,11,17,0.85); backdrop-filter:blur(20px);">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
+
+      <!-- Logo -->
+      <button onclick="showPage('home')" class="flex items-center gap-3 group flex-shrink-0">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 p-[1.5px] group-hover:scale-105 transition-transform">
+          <div class="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center">
+            <img src="assets/logo.png" alt="Logo" class="w-6 h-6 object-contain">
           </div>
         </div>
-        <div class="flex flex-col">
-          <div class="flex items-center gap-2">
-            <span class="font-black text-lg text-white tracking-tight">DotaMod<span class="text-indigo-400">Hub</span></span>
-            <span id="githubReleaseTag" class="px-2 py-0.5 text-[10px] font-mono font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 rounded-full">v1.6.0</span>
-          </div>
-          <span class="text-[10px] text-slate-400 font-medium tracking-wider uppercase">Source 2 Mod Orchestrator</span>
+        <div class="hidden sm:block">
+          <span class="font-black text-base text-white">DotaMod<span class="text-indigo-400">Hub</span></span>
+          <span id="githubReleaseTag" class="ml-2 px-1.5 py-0.5 text-[9px] font-mono font-bold bg-indigo-500/15 text-indigo-300 border border-indigo-500/25 rounded-full">v1.6.0</span>
         </div>
-      </a>
-      <nav class="hidden md:flex items-center gap-8 text-sm font-semibold text-slate-300">
-        <a href="#features" class="hover:text-indigo-400 transition-colors">Особенности</a>
-        <a href="#catalog" class="hover:text-indigo-400 transition-colors">Каталог</a>
-        <a href="#vac-safety" class="hover:text-emerald-400 flex items-center gap-1.5 transition-colors"><i class="fa-solid fa-shield-halved text-emerald-400 text-xs"></i>VAC‑Безопасность</a>
-        <a href="#how-it-works" class="hover:text-indigo-400 transition-colors">Как работает</a>
-        <a href="#faq" class="hover:text-indigo-400 transition-colors">FAQ</a>
+      </button>
+
+      <!-- Nav tabs -->
+      <nav class="flex items-center gap-1">
+        <button onclick="showPage('home')" id="nav-home" class="nav-btn active px-3 py-2 rounded-lg text-sm font-semibold text-slate-300 hover:text-white hover:bg-white/5 transition-colors">
+          <i class="fa-solid fa-house mr-1.5 text-xs"></i>Главная
+        </button>
+        <button onclick="showPage('catalog')" id="nav-catalog" class="nav-btn px-3 py-2 rounded-lg text-sm font-semibold text-slate-300 hover:text-white hover:bg-white/5 transition-colors">
+          <i class="fa-solid fa-layer-group mr-1.5 text-xs"></i>Каталог
+          <span class="ml-1.5 px-1.5 py-0.5 text-[9px] font-bold bg-indigo-500/20 text-indigo-300 rounded-full">1 886</span>
+        </button>
+        <button onclick="showPage('about')" id="nav-about" class="nav-btn px-3 py-2 rounded-lg text-sm font-semibold text-slate-300 hover:text-white hover:bg-white/5 transition-colors">
+          <i class="fa-solid fa-circle-info mr-1.5 text-xs"></i>О проекте
+        </button>
       </nav>
-      <div class="hidden sm:flex items-center gap-3">
-        <a href="https://github.com/terbixsorr/DotaModHub" target="_blank" rel="noopener" class="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-800/80 hover:bg-slate-700 transition-colors">
+
+      <!-- CTA -->
+      <a href="https://github.com/terbixsorr/DotaModHub/releases/latest" target="_blank" rel="noopener"
+         class="flex-shrink-0 hidden sm:flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] glow-btn">
+        <i class="fa-solid fa-download"></i>Скачать
+      </a>
+    </div>
+  </header>
+
+  <!-- ═══════════════════════════════════════════
+       PAGE: HOME
+  ════════════════════════════════════════════ -->
+  <div id="page-home" class="page active pt-16">
+
+    <!-- Hero -->
+    <section class="relative min-h-[85vh] flex flex-col items-center justify-center text-center px-6 py-20">
+      <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold mb-6 border"
+           style="background:rgba(79,70,229,0.15); border-color:rgba(99,102,241,0.3); color:#a5b4fc;">
+        <span class="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse"></span>
+        VAC-Безопасно · 100% без бана
+      </div>
+
+      <h1 class="text-5xl sm:text-6xl md:text-7xl font-black text-white mb-4 leading-tight">
+        DotaMod<span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">Hub</span>
+      </h1>
+      <p class="text-xl text-slate-400 max-w-2xl mb-10 leading-relaxed">
+        Крупнейшая коллекция модов для Dota 2 — арканы, звуки, карты, фоны. Одно нажатие, никакого бана.
+      </p>
+
+      <div class="flex flex-wrap gap-4 justify-center">
+        <a href="https://github.com/terbixsorr/DotaModHub/releases/latest" target="_blank" rel="noopener"
+           class="flex items-center gap-2.5 px-7 py-3.5 rounded-xl font-bold text-white bg-indigo-600 hover:bg-indigo-500 transition-all duration-200 hover:scale-[1.03] active:scale-[0.98] glow-btn">
+          <i class="fa-solid fa-download"></i>Скачать бесплатно
+        </a>
+        <button onclick="showPage('catalog')"
+           class="flex items-center gap-2.5 px-7 py-3.5 rounded-xl font-bold text-slate-200 transition-all duration-200 hover:scale-[1.03] active:scale-[0.98] glass-panel hover:border-indigo-500/40">
+          <i class="fa-solid fa-layer-group text-indigo-400"></i>Смотреть каталог
+        </button>
+      </div>
+    </section>
+
+    <!-- Stats strip -->
+    <section class="pb-16 px-6">
+      <div class="max-w-4xl mx-auto grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div class="glass-panel rounded-2xl p-6 text-center hover:scale-[1.02] transition-transform duration-200 hover:border-indigo-500/30">
+          <div class="flex items-center justify-center gap-2 mb-2">
+            <i class="fa-solid fa-download text-indigo-400"></i>
+            <span class="text-xs font-mono uppercase text-slate-500 tracking-wider">Скачиваний</span>
+          </div>
+          <div class="text-4xl font-black text-white" id="totalDownloads">—</div>
+          <div class="text-xs text-slate-500 mt-1">через GitHub Releases</div>
+        </div>
+        <div class="glass-panel rounded-2xl p-6 text-center hover:scale-[1.02] transition-transform duration-200 hover:border-purple-500/30">
+          <div class="flex items-center justify-center gap-2 mb-2">
+            <i class="fa-solid fa-tag text-purple-400"></i>
+            <span class="text-xs font-mono uppercase text-slate-500 tracking-wider">Версия</span>
+          </div>
+          <div class="text-4xl font-black text-white" id="githubReleaseTagStat">v1.6.0</div>
+          <div class="text-xs text-slate-500 mt-1">актуальный релиз</div>
+        </div>
+        <div class="glass-panel rounded-2xl p-6 text-center hover:scale-[1.02] transition-transform duration-200 hover:border-emerald-500/30">
+          <div class="flex items-center justify-center gap-2 mb-2">
+            <i class="fa-solid fa-shield-halved text-emerald-400"></i>
+            <span class="text-xs font-mono uppercase text-slate-500 tracking-wider">VAC‑Статус</span>
+          </div>
+          <div class="text-4xl font-black text-emerald-400">100%</div>
+          <div class="text-xs text-slate-500 mt-1">абсолютно безопасно</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Features -->
+    <section id="features" class="py-16 px-6 border-t border-white/5">
+      <div class="max-w-5xl mx-auto">
+        <h2 class="text-3xl font-black text-white text-center mb-2">Почему DotaMod Hub?</h2>
+        <p class="text-slate-400 text-center mb-10">Всё что нужно для персонализации Dota 2 в одном месте</p>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div class="glass-panel p-6 rounded-2xl hover:border-indigo-500/30 transition-all duration-200 hover:scale-[1.01]">
+            <div class="w-10 h-10 rounded-xl bg-indigo-500/15 flex items-center justify-center mb-4">
+              <i class="fa-solid fa-shield-halved text-indigo-400 text-lg"></i>
+            </div>
+            <h3 class="font-bold text-white mb-2">VAC‑Безопасность</h3>
+            <p class="text-slate-400 text-sm">Все моды работают только с клиентскими файлами — никаких инжекций в память. Valve Anti-Cheat не реагирует.</p>
+          </div>
+          <div class="glass-panel p-6 rounded-2xl hover:border-purple-500/30 transition-all duration-200 hover:scale-[1.01]">
+            <div class="w-10 h-10 rounded-xl bg-purple-500/15 flex items-center justify-center mb-4">
+              <i class="fa-solid fa-layer-group text-purple-400 text-lg"></i>
+            </div>
+            <h3 class="font-bold text-white mb-2">1 886+ модов</h3>
+            <p class="text-slate-400 text-sm">Арканы, звуковые паки, анонсеры, WebM-фоны, карты и эффекты предметов — крупнейшая коллекция в рунете.</p>
+          </div>
+          <div class="glass-panel p-6 rounded-2xl hover:border-cyan-500/30 transition-all duration-200 hover:scale-[1.01]">
+            <div class="w-10 h-10 rounded-xl bg-cyan-500/15 flex items-center justify-center mb-4">
+              <i class="fa-solid fa-bolt text-cyan-400 text-lg"></i>
+            </div>
+            <h3 class="font-bold text-white mb-2">Одно нажатие</h3>
+            <p class="text-slate-400 text-sm">Встроенный менеджер сам найдёт путь к Dota 2, скопирует файлы и настроит gameinfo.gi.</p>
+          </div>
+          <div class="glass-panel p-6 rounded-2xl hover:border-amber-500/30 transition-all duration-200 hover:scale-[1.01]">
+            <div class="w-10 h-10 rounded-xl bg-amber-500/15 flex items-center justify-center mb-4">
+              <i class="fa-solid fa-headphones text-amber-400 text-lg"></i>
+            </div>
+            <h3 class="font-bold text-white mb-2">Аудио-превью</h3>
+            <p class="text-slate-400 text-sm">Прослушайте звуковой мод прямо в браузере, не скачивая. Встроенный плеер с визуализацией.</p>
+          </div>
+          <div class="glass-panel p-6 rounded-2xl hover:border-emerald-500/30 transition-all duration-200 hover:scale-[1.01]">
+            <div class="w-10 h-10 rounded-xl bg-emerald-500/15 flex items-center justify-center mb-4">
+              <i class="fa-solid fa-rotate text-emerald-400 text-lg"></i>
+            </div>
+            <h3 class="font-bold text-white mb-2">Автообновление</h3>
+            <p class="text-slate-400 text-sm">Приложение проверяет новые релизы на GitHub и уведомляет о выходе свежих модов и версий менеджера.</p>
+          </div>
+          <div class="glass-panel p-6 rounded-2xl hover:border-rose-500/30 transition-all duration-200 hover:scale-[1.01]">
+            <div class="w-10 h-10 rounded-xl bg-rose-500/15 flex items-center justify-center mb-4">
+              <i class="fa-brands fa-github text-rose-400 text-lg"></i>
+            </div>
+            <h3 class="font-bold text-white mb-2">Open Source</h3>
+            <p class="text-slate-400 text-sm">Весь код открыт на GitHub под MIT-лицензией. Принимаем PR и баг-репорты от сообщества.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- VAC safety -->
+    <section id="vac-safety" class="py-16 px-6 border-t border-white/5">
+      <div class="max-w-5xl mx-auto flex flex-col md:flex-row items-center gap-10">
+        <div class="w-full md:w-1/2 relative rounded-2xl overflow-hidden aspect-video">
+          <img src="assets/wallpapers/radiant_dire.jpg" alt="VAC Safety" class="w-full h-full object-cover">
+          <div class="absolute inset-0" style="background:linear-gradient(135deg,rgba(79,70,229,0.4),transparent)"></div>
+          <div class="absolute bottom-4 left-4 flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/90 text-white text-xs font-bold">
+            <i class="fa-solid fa-shield-check"></i>VAC SAFE — Verified
+          </div>
+        </div>
+        <div class="w-full md:w-1/2">
+          <div class="inline-block px-3 py-1 rounded-full text-xs font-bold mb-4 bg-emerald-500/15 text-emerald-400 border border-emerald-500/25">
+            Как это работает
+          </div>
+          <h2 class="text-3xl font-black text-white mb-4">Полная совместимость с VAC</h2>
+          <div class="space-y-4">
+            <div class="flex gap-3">
+              <div class="w-6 h-6 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <i class="fa-solid fa-check text-emerald-400 text-xs"></i>
+              </div>
+              <p class="text-slate-300 text-sm">Работа только с <strong class="text-white">клиентскими файлами</strong> (vpk, gameinfo.gi) — не затрагивает серверную логику</p>
+            </div>
+            <div class="flex gap-3">
+              <div class="w-6 h-6 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <i class="fa-solid fa-check text-emerald-400 text-xs"></i>
+              </div>
+              <p class="text-slate-300 text-sm"><strong class="text-white">Никакой инжекции</strong> в память игры или DLL-подмены — только замена ресурсных пакетов</p>
+            </div>
+            <div class="flex gap-3">
+              <div class="w-6 h-6 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <i class="fa-solid fa-check text-emerald-400 text-xs"></i>
+              </div>
+              <p class="text-slate-300 text-sm">Используется тот же механизм что и <strong class="text-white">официальные кастомные арканы</strong> из Steam Workshop</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="border-t border-white/5 py-8 px-6 mt-4" style="background:rgba(8,11,17,0.9)">
+      <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+          <img src="assets/logo.png" alt="Logo" class="w-7 h-7 object-contain">
+          <span class="font-bold text-sm text-white">DotaMod Hub</span>
+          <span class="text-xs text-slate-500">© 2026 · Open‑Source</span>
+        </div>
+        <div class="flex gap-5 text-sm text-slate-400">
+          <a href="https://github.com/terbixsorr/DotaModHub" target="_blank" class="hover:text-white transition-colors flex items-center gap-1.5">
+            <i class="fa-brands fa-github"></i>GitHub
+          </a>
+          <a href="https://github.com/terbixsorr/DotaModHub/releases" target="_blank" class="hover:text-white transition-colors">Releases</a>
+          <a href="https://github.com/terbixsorr/DotaModHub/blob/main/LICENSE" target="_blank" class="hover:text-white transition-colors">MIT License</a>
+        </div>
+      </div>
+    </footer>
+
+  </div><!-- /page-home -->
+
+  <!-- ═══════════════════════════════════════════
+       PAGE: CATALOG
+  ════════════════════════════════════════════ -->
+  <div id="page-catalog" class="page pt-16">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+
+      <!-- Header row -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <div>
+          <h1 class="text-2xl font-black text-white">Каталог модов</h1>
+          <p class="text-sm text-slate-400 mt-0.5">
+            Показано: <span id="catalogCount" class="text-indigo-400 font-bold">0</span> из <span class="text-slate-300">1 886</span>
+          </p>
+        </div>
+        <!-- Search -->
+        <div class="relative">
+          <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm"></i>
+          <input id="catalogSearch" type="text" placeholder="Поиск по названию или герою…"
+            class="search-input w-full sm:w-64 pl-9 pr-4 py-2.5 rounded-xl text-sm bg-slate-800/80 border border-white/8 text-white focus:outline-none focus:border-indigo-500/60 focus:ring-1 focus:ring-indigo-500/30 transition-all"
+            oninput="filterCatalog()">
+        </div>
+      </div>
+
+      <!-- Filter tabs -->
+      <div class="flex flex-wrap gap-2 mb-6">
+        <button class="filter-tab active px-4 py-2 rounded-xl text-sm font-bold glass-panel text-slate-300 transition-all duration-200 hover:scale-[1.02]" data-cat="all" onclick="setCatFilter(this, 'all')">
+          <i class="fa-solid fa-border-all mr-1.5"></i>Все
+        </button>
+        <button class="filter-tab px-4 py-2 rounded-xl text-sm font-bold glass-panel text-slate-300 transition-all duration-200 hover:scale-[1.02]" data-cat="arcanas" onclick="setCatFilter(this, 'arcanas')">
+          <i class="fa-solid fa-wand-sparkles mr-1.5 text-amber-400"></i>Арканы
+        </button>
+        <button class="filter-tab px-4 py-2 rounded-xl text-sm font-bold glass-panel text-slate-300 transition-all duration-200 hover:scale-[1.02]" data-cat="sounds" onclick="setCatFilter(this, 'sounds')">
+          <i class="fa-solid fa-headphones mr-1.5 text-purple-400"></i>Звуки
+        </button>
+        <button class="filter-tab px-4 py-2 rounded-xl text-sm font-bold glass-panel text-slate-300 transition-all duration-200 hover:scale-[1.02]" data-cat="backgrounds" onclick="setCatFilter(this, 'backgrounds')">
+          <i class="fa-solid fa-panorama mr-1.5 text-cyan-400"></i>Фоны
+        </button>
+        <button class="filter-tab px-4 py-2 rounded-xl text-sm font-bold glass-panel text-slate-300 transition-all duration-200 hover:scale-[1.02]" data-cat="terrains" onclick="setCatFilter(this, 'terrains')">
+          <i class="fa-solid fa-map mr-1.5 text-emerald-400"></i>Карты
+        </button>
+        <button class="filter-tab px-4 py-2 rounded-xl text-sm font-bold glass-panel text-slate-300 transition-all duration-200 hover:scale-[1.02]" data-cat="items" onclick="setCatFilter(this, 'items')">
+          <i class="fa-solid fa-sparkles mr-1.5 text-rose-400"></i>Эффекты
+        </button>
+      </div>
+
+      <!-- Cards grid -->
+      <div id="catalogGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"></div>
+
+      <!-- Empty state -->
+      <div id="catalogEmpty" class="hidden py-20 text-center">
+        <i class="fa-solid fa-box-open text-4xl text-slate-600 mb-4"></i>
+        <p class="text-slate-400">Ничего не найдено. Попробуйте изменить фильтр или поисковый запрос.</p>
+      </div>
+    </div>
+  </div><!-- /page-catalog -->
+
+  <!-- ═══════════════════════════════════════════
+       PAGE: ABOUT
+  ════════════════════════════════════════════ -->
+  <div id="page-about" class="page pt-16">
+    <div class="max-w-3xl mx-auto px-6 py-12">
+      <h1 class="text-3xl font-black text-white mb-2">О проекте</h1>
+      <p class="text-slate-400 mb-8">DotaMod Hub — открытый менеджер модов для Dota 2</p>
+
+      <div class="space-y-5">
+        <div class="glass-panel rounded-2xl p-6">
+          <h2 class="font-bold text-white mb-3 flex items-center gap-2"><i class="fa-solid fa-circle-question text-indigo-400"></i>Как установить?</h2>
+          <p class="text-slate-300 text-sm leading-relaxed">Скачайте последний релиз с GitHub, запустите <code class="bg-slate-800 px-1.5 py-0.5 rounded text-indigo-300 text-xs">.exe</code>, выберите мод в каталоге и нажмите «Установить». Менеджер сам найдёт путь к Dota 2 и скопирует необходимые файлы.</p>
+        </div>
+        <div class="glass-panel rounded-2xl p-6">
+          <h2 class="font-bold text-white mb-3 flex items-center gap-2"><i class="fa-solid fa-shield-halved text-emerald-400"></i>Безопасно ли это?</h2>
+          <p class="text-slate-300 text-sm leading-relaxed">Да. Все моды работают только с клиентскими ресурсными файлами (vpk / gameinfo.gi). Никакая инжекция в память игры не происходит. Это тот же механизм, что используют официальные арканы из Steam Workshop.</p>
+        </div>
+        <div class="glass-panel rounded-2xl p-6">
+          <h2 class="font-bold text-white mb-3 flex items-center gap-2"><i class="fa-solid fa-rotate text-purple-400"></i>Как откатить мод?</h2>
+          <p class="text-slate-300 text-sm leading-relaxed">В приложении есть кнопка «Удалить» для каждого установленного мода. Также вы можете проверить целостность файлов Dota 2 через Steam — это восстановит оригинальные ресурсы.</p>
+        </div>
+        <div class="glass-panel rounded-2xl p-6">
+          <h2 class="font-bold text-white mb-3 flex items-center gap-2"><i class="fa-brands fa-github text-slate-300"></i>Как добавить свой мод?</h2>
+          <p class="text-slate-300 text-sm leading-relaxed">Откройте Pull Request в <a href="https://github.com/terbixsorr/DotaModHub" target="_blank" class="text-indigo-400 hover:underline">репозитории на GitHub</a>. Следуйте инструкции в <code class="bg-slate-800 px-1.5 py-0.5 rounded text-indigo-300 text-xs">CONTRIBUTING.md</code>.</p>
+        </div>
+      </div>
+
+      <div class="mt-8 flex gap-4">
+        <a href="https://github.com/terbixsorr/DotaModHub" target="_blank" rel="noopener"
+           class="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm text-white bg-slate-800 hover:bg-slate-700 transition-all glow-btn">
           <i class="fa-brands fa-github"></i>GitHub
         </a>
-        <a href="#download" class="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 transition-colors">
+        <a href="https://github.com/terbixsorr/DotaModHub/releases/latest" target="_blank" rel="noopener"
+           class="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm text-white bg-indigo-600 hover:bg-indigo-500 transition-all glow-btn">
           <i class="fa-solid fa-download"></i>Скачать
         </a>
       </div>
     </div>
-  </header>
+  </div><!-- /page-about -->
 
-  <!-- Hero Section -->
-  <section class="pt-24 md:pt-32 lg:pt-40 pb-10 text-center">
-    <h1 class="text-4xl md:text-5xl font-extrabold text-white mb-4 anime-hero-fade">DotaMod Hub</h1>
-    <p class="text-lg md:text-xl text-slate-300 mb-6 max-w-2xl mx-auto anime-hero-fade">Безопасные моды для Dota 2. Полностью совместимы с VAC, легко устанавливаются и позволяют персонализировать игру.</p>
-    <a href="https://github.com/terbixsorr/DotaModHub/releases/latest" target="_blank" rel="noopener" class="inline-flex items-center gap-2 px-8 py-3 bg-indigo-600 text-white rounded-xl shadow-lg shadow-indigo-500/30 hover:bg-indigo-500 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] anime-float-mockup font-semibold">
-      <i class="fa-solid fa-download"></i>Скачать сейчас
-    </a>
-  </section>
+  <!-- ═══ MOD DETAIL MODAL ═══ -->
+  <div id="modModal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onclick="closeModal(event)">
+    <div class="relative w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl modal-enter" style="background:#0f172a; border:1px solid rgba(255,255,255,0.1);" onclick="event.stopPropagation()">
+      <button onclick="closeModal()" class="absolute top-4 right-4 z-20 w-8 h-8 rounded-xl bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-300 hover:text-white transition-colors">
+        <i class="fa-solid fa-xmark text-sm"></i>
+      </button>
+      <div class="relative h-56 overflow-hidden">
+        <img id="modalImg" src="" alt="" class="w-full h-full object-cover">
+        <div class="absolute inset-0" style="background:linear-gradient(to top, #0f172a 0%, transparent 60%)"></div>
+        <span id="modalBadge" class="absolute top-3 left-3 px-3 py-1 rounded-full text-xs font-bold bg-indigo-600/90 text-white backdrop-blur"></span>
+        <span id="modalRarity" class="absolute top-3 right-12 px-3 py-1 rounded-full text-xs font-bold border" style="background:rgba(15,23,42,0.8); backdrop-filter:blur(8px)"></span>
+      </div>
+      <div class="p-6">
+        <div id="modalHeroTag" class="text-xs font-mono text-indigo-400 mb-1"></div>
+        <h3 id="modalTitle" class="text-xl font-black text-white mb-2"></h3>
+        <p id="modalDesc" class="text-sm text-slate-300 leading-relaxed mb-4"></p>
 
-  <!-- Stats Strip — Downloads Counter -->
-  <section class="py-10">
-    <div class="max-w-4xl mx-auto grid grid-cols-1 sm:grid-cols-3 gap-4 px-6">
-      <!-- Total Downloads -->
-      <div class="glass-panel rounded-2xl p-6 text-center border border-indigo-500/20 shadow-lg shadow-indigo-500/10 hover:scale-[1.02] transition-transform duration-200">
-        <div class="flex items-center justify-center gap-2 mb-2">
-          <i class="fa-solid fa-download text-indigo-400 text-xl"></i>
-          <span class="text-xs font-mono uppercase text-slate-400 tracking-wider">Скачиваний</span>
+        <!-- Audio preview in modal -->
+        <div id="modalAudioSection" class="hidden mb-5">
+          <div class="flex items-center gap-3 p-3 rounded-xl" style="background:rgba(79,70,229,0.1); border:1px solid rgba(99,102,241,0.2);">
+            <div class="flex items-center gap-0.5 h-5" id="modalEqBars">
+              <span class="eq-bar" style="animation-play-state:paused"></span>
+              <span class="eq-bar" style="animation-play-state:paused"></span>
+              <span class="eq-bar" style="animation-play-state:paused"></span>
+              <span class="eq-bar" style="animation-play-state:paused"></span>
+            </div>
+            <span id="modalAudioLabel" class="text-xs text-slate-300 flex-1 truncate">Нет превью</span>
+            <button id="modalPlayBtn" onclick="toggleModalAudio()" class="w-8 h-8 rounded-lg bg-indigo-600 hover:bg-indigo-500 flex items-center justify-center text-white text-xs transition-colors">
+              <i class="fa-solid fa-play" id="modalPlayIcon"></i>
+            </button>
+          </div>
+          <div class="audio-bar mt-2"><div class="audio-progress" id="modalAudioProgress"></div></div>
         </div>
-        <div class="text-3xl font-black text-white" id="totalDownloads">—</div>
-        <div class="text-xs text-slate-500 mt-1">через GitHub Releases</div>
-      </div>
-      <!-- Version Badge -->
-      <div class="glass-panel rounded-2xl p-6 text-center border border-purple-500/20 shadow-lg shadow-purple-500/10 hover:scale-[1.02] transition-transform duration-200">
-        <div class="flex items-center justify-center gap-2 mb-2">
-          <i class="fa-solid fa-tag text-purple-400 text-xl"></i>
-          <span class="text-xs font-mono uppercase text-slate-400 tracking-wider">Версия</span>
-        </div>
-        <div class="text-3xl font-black text-white" id="githubReleaseTagStat">v1.6.0</div>
-        <div class="text-xs text-slate-500 mt-1">актуальный релиз</div>
-      </div>
-      <!-- VAC Safe -->
-      <div class="glass-panel rounded-2xl p-6 text-center border border-emerald-500/20 shadow-lg shadow-emerald-500/10 hover:scale-[1.02] transition-transform duration-200">
-        <div class="flex items-center justify-center gap-2 mb-2">
-          <i class="fa-solid fa-shield-halved text-emerald-400 text-xl"></i>
-          <span class="text-xs font-mono uppercase text-slate-400 tracking-wider">VAC‑Статус</span>
-        </div>
-        <div class="text-3xl font-black text-emerald-400">100%</div>
-        <div class="text-xs text-slate-500 mt-1">безопасно</div>
-      </div>
-    </div>
-  </section>
 
-  <!-- Features Grid -->
-  <section id="features" class="py-12 bg-slate-900/60">
-    <div class="max-w-5xl mx-auto">
-      <h2 class="text-2xl font-bold text-white text-center mb-8">Почему DotaMod Hub?</h2>
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div class="glass-panel p-6 rounded-xl text-center">
-          <i class="fa-solid fa-lock text-2xl text-indigo-400 mb-3"></i>
-          <h3 class="font-semibold text-white mb-2">VAC‑Безопасность</h3>
-          <p class="text-slate-300">Все моды прошли проверку и не вызывают бан.</p>
-        </div>
-        <div class="glass-panel p-6 rounded-xl text-center">
-          <i class="fa-solid fa-paintbrush text-2xl text-indigo-400 mb-3"></i>
-          <h3 class="font-semibold text-white mb-2">Кастомизация</h3>
-          <p class="text-slate-300">Более 200 аркан, звуковых паков и карт.</p>
-        </div>
-        <div class="glass-panel p-6 rounded-xl text-center">
-          <i class="fa-solid fa-rocket text-2xl text-indigo-400 mb-3"></i>
-          <h3 class="font-semibold text-white mb-2">Лёгкая установка</h3>
-          <p class="text-slate-300">Одно‑кликовая установка через встроенный менеджер.</p>
+        <div class="flex gap-3">
+          <a href="https://github.com/terbixsorr/DotaModHub/releases/latest" target="_blank" rel="noopener"
+             class="flex-1 py-3 rounded-xl text-center text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-500 transition-colors glow-btn">
+            <i class="fa-solid fa-download mr-1.5"></i>Установить
+          </a>
+          <button onclick="closeModal()" class="px-5 py-3 rounded-xl text-sm font-semibold text-slate-300 bg-slate-800 hover:bg-slate-700 transition-colors">
+            Закрыть
+          </button>
         </div>
       </div>
     </div>
-  </section>
+  </div>
 
-  <!-- VAC Safety Section -->
-  <section id="vac-safety" class="py-12">
-    <div class="max-w-5xl mx-auto flex flex-col md:flex-row items-center gap-8">
-      <img src="assets/wallpapers/radiant_dire.jpg" alt="VAC Safety" class="w-full md:w-1/2 rounded-xl glass-panel" />
+  <!-- ═══ GLOBAL AUDIO BAR ═══ -->
+  <div id="globalAudioBar" class="fixed bottom-5 left-1/2 -translate-x-1/2 z-40 transition-all duration-300 translate-y-24 opacity-0 pointer-events-none">
+    <div class="flex items-center gap-3 px-5 py-3 rounded-2xl shadow-2xl" style="background:rgba(15,23,42,0.95); border:1px solid rgba(99,102,241,0.35); backdrop-filter:blur(20px);">
+      <div class="flex items-center gap-0.5 h-5">
+        <span class="eq-bar"></span><span class="eq-bar"></span><span class="eq-bar"></span><span class="eq-bar"></span>
+      </div>
       <div>
-        <h2 class="text-2xl font-bold text-white mb-4">Полная совместимость с VAC</h2>
-        <p class="text-slate-300 mb-2">Каждый мод проходит автоматическую проверку на сигнатуру, чтобы гарантировать отсутствие чит‑кода.</p>
-        <p class="text-slate-300">Вы можете наслаждаться кастомизацией без риска блокировки аккаунта.</p>
+        <div class="text-[9px] font-mono uppercase text-indigo-400 tracking-wider">Воспроизведение</div>
+        <div id="audioBarTitle" class="text-xs font-bold text-white max-w-48 truncate">—</div>
       </div>
+      <button onclick="stopGlobalAudio()" class="w-7 h-7 rounded-lg bg-slate-700 hover:bg-slate-600 flex items-center justify-center text-slate-300 hover:text-white transition-colors pointer-events-auto">
+        <i class="fa-solid fa-stop text-xs"></i>
+      </button>
     </div>
-  </section>
+  </div>
 
-  <!-- FAQ -->
-  <section id="faq" class="py-12 bg-slate-900/60">
-    <div class="max-w-4xl mx-auto">
-      <h2 class="text-2xl font-bold text-white text-center mb-8">Часто задаваемые вопросы</h2>
-      <div class="space-y-4">
-        <div class="faq-item">
-          <button class="faq-toggle flex justify-between items-center w-full py-3 px-4 bg-slate-800 rounded-lg text-left">
-            <span class="text-slate-200">Как установить мод?</span>
-            <i class="faq-icon fa-solid fa-chevron-down transition-transform"></i>
-          </button>
-          <div class="faq-content hidden mt-2 px-4 text-slate-300">
-            Скачайте архив, распакуйте в папку "mods" внутри директории Dota 2 и включите в меню модификаций.
-          </div>
-        </div>
-        <div class="faq-item">
-          <button class="faq-toggle flex justify-between items-center w-full py-3 px-4 bg-slate-800 rounded-lg text-left">
-            <span class="text-slate-200">Могу ли я добавить свои моды?</span>
-            <i class="faq-icon fa-solid fa-chevron-down transition-transform"></i>
-          </button>
-          <div class="faq-content hidden mt-2 px-4 text-slate-300">
-            Да, вы можете загрузить свои файлы в папку "custom" и они появятся в каталоге.
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Footer -->
-  <footer class="relative py-8 px-6 sm:px-10 border-t border-white/5 bg-slate-950 text-slate-400">
-    <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-      <div class="flex items-center gap-3">
-        <img src="assets/logo.png" alt="Logo" class="w-8 h-8 object-contain" />
-        <span class="font-bold text-sm text-white">DotaMod Hub</span>
-        <span class="text-xs">© 2026 Open‑Source Project</span>
-      </div>
-      <div class="flex gap-4 text-sm">
-        <a href="https://github.com/terbixsorr/DotaModHub" class="hover:text-white transition-colors">GitHub</a>
-        <a href="https://github.com/terbixsorr/DotaModHub/releases" class="hover:text-white transition-colors">Releases</a>
-        <a href="https://github.com/terbixsorr/DotaModHub/blob/main/LICENSE" class="hover:text-white transition-colors">MIT License</a>
-      </div>
-    </div>
-  </footer>
-
-  <!-- Scripts -->
+  <audio id="globalAudio" preload="none"></audio>
   <script src="assets/anime.min.js"></script>
   <script src="site.js"></script>
 </body>
